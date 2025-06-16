@@ -1,5 +1,11 @@
 // contexts/DataContext.tsx
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  ReactNode,
+} from 'react';
 
 interface Event {
   id: string;
@@ -91,6 +97,68 @@ function reducer(state: AppState, action: Action): AppState {
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+
+  useEffect(() => {
+    if (state.events.length === 0 && state.todos.length === 0) {
+      const now = new Date();
+      const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+      const dateKey = now.toISOString().split('T')[0];
+
+      // Dummy Event
+      dispatch({
+        type: 'ADD_EVENT',
+        payload: {
+          id: 'demo-event-1',
+          title: 'Demo Event: Team Standup',
+          description: 'Discuss tasks and blockers',
+          start: now,
+          end: oneHourLater,
+          color: '#3B82F6',
+          location: 'Zoom',
+          guests: ['alice@demo.com', 'bob@demo.com'],
+          meetLink: 'https://meet.google.com/demo',
+        },
+      });
+
+      // Dummy Todo
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'demo-todo-1',
+          title: 'Demo Todo: Update Dashboard',
+          description: 'Update sales dashboard for leadership',
+          completed: false,
+          priority: 'high',
+          projectId: 'default',
+          dueDate: now,
+          createdAt: new Date(),
+        },
+      });
+
+      // Dummy Daily Plan
+      dispatch({
+        type: 'SET_DAILY_PLAN',
+        payload: {
+          date: dateKey,
+          items: [
+            {
+              id: 'demo-plan-1',
+              title: 'Demo Event: Team Standup',
+              description: 'Discuss tasks and blockers',
+              type: 'event',
+              start: now,
+              end: oneHourLater,
+              originalId: 'demo-event-1',
+              completed: false,
+              location: 'Zoom',
+              guests: ['alice@demo.com', 'bob@demo.com'],
+              meetLink: 'https://meet.google.com/demo',
+            },
+          ],
+        },
+      });
+    }
+  }, []);
 
   return (
     <DataContext.Provider value={{ state, dispatch }}>
