@@ -1,8 +1,10 @@
+// components/QuickAddModal.tsx
 import React, { useState } from 'react';
-import { X, Calendar, CheckSquare, Clock, MapPin, Users, Video } from 'lucide-react';
+import {
+  X, Calendar, CheckSquare, Clock, MapPin, Users, Video
+} from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { v4 as uuidv4 } from 'uuid';
-import { format } from 'date-fns';
 
 interface QuickAddModalProps {
   currentDate: Date;
@@ -28,14 +30,12 @@ export default function QuickAddModal({ currentDate, onClose }: QuickAddModalPro
     e.preventDefault();
 
     if (activeTab === 'event') {
-      const [startHour, startMinute] = formData.startTime.split(':').map(Number);
-      const [endHour, endMinute] = formData.endTime.split(':').map(Number);
-
+      const [sh, sm] = formData.startTime.split(':').map(Number);
+      const [eh, em] = formData.endTime.split(':').map(Number);
       const start = new Date(currentDate);
-      start.setHours(startHour, startMinute, 0, 0);
-
       const end = new Date(currentDate);
-      end.setHours(endHour, endMinute, 0, 0);
+      start.setHours(sh, sm, 0, 0);
+      end.setHours(eh, em, 0, 0);
 
       const event = {
         id: uuidv4(),
@@ -45,8 +45,10 @@ export default function QuickAddModal({ currentDate, onClose }: QuickAddModalPro
         end,
         color: '#3B82F6',
         location: formData.location,
-        guests: formData.guests ? formData.guests.split(',').map(email => email.trim()) : [],
-        meetLink: formData.addGoogleMeet ? `https://meet.google.com/${Math.random().toString(36).substr(2, 9)}` : undefined,
+        guests: formData.guests ? formData.guests.split(',').map(g => g.trim()) : [],
+        meetLink: formData.addGoogleMeet
+          ? `https://meet.google.com/${Math.random().toString(36).substring(2, 9)}`
+          : undefined,
       };
 
       dispatch({ type: 'ADD_EVENT', payload: event });
@@ -58,7 +60,7 @@ export default function QuickAddModal({ currentDate, onClose }: QuickAddModalPro
         completed: false,
         priority: formData.priority,
         projectId: formData.projectId,
-        dueDate: currentDate,
+        dueDate: new Date(currentDate),
         createdAt: new Date(),
       };
 
@@ -78,7 +80,7 @@ export default function QuickAddModal({ currentDate, onClose }: QuickAddModalPro
           </h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           >
             <X className="w-5 h-5" />
           </button>
@@ -93,7 +95,7 @@ export default function QuickAddModal({ currentDate, onClose }: QuickAddModalPro
             <button
               key={key}
               onClick={() => setActiveTab(key as 'event' | 'todo')}
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 flex-1 justify-center ${
+              className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium flex-1 justify-center ${
                 activeTab === key
                   ? 'bg-primary-500 text-white shadow-lg'
                   : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -108,29 +110,27 @@ export default function QuickAddModal({ currentDate, onClose }: QuickAddModalPro
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Title
             </label>
             <input
               type="text"
+              required
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              placeholder={activeTab === 'event' ? 'Meeting with team' : 'Complete project report'}
-              required
+              className="w-full px-3 py-2 rounded-lg border bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Description
             </label>
             <textarea
+              rows={2}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              rows={3}
-              placeholder="Add details..."
+              className="w-full px-3 py-2 rounded-lg border bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
           </div>
 
@@ -138,54 +138,50 @@ export default function QuickAddModal({ currentDate, onClose }: QuickAddModalPro
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                     Start Time
                   </label>
                   <input
                     type="time"
                     value={formData.startTime}
                     onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 rounded-lg border bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                     End Time
                   </label>
                   <input
                     type="time"
                     value={formData.endTime}
                     onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 rounded-lg border bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
-                  <MapPin className="w-4 h-4 mr-1" />
-                  Location
+                <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1 flex items-center">
+                  <MapPin className="w-4 h-4 mr-1" /> Location
                 </label>
                 <input
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="Conference Room A, Online, or address"
+                  className="w-full px-3 py-2 rounded-lg border bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center">
-                  <Users className="w-4 h-4 mr-1" />
-                  Guests (Email addresses)
+                <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1 flex items-center">
+                  <Users className="w-4 h-4 mr-1" /> Guests
                 </label>
                 <input
                   type="text"
                   value={formData.guests}
                   onChange={(e) => setFormData({ ...formData, guests: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  placeholder="john@company.com, sarah@company.com"
+                  className="w-full px-3 py-2 rounded-lg border bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
 
@@ -195,24 +191,24 @@ export default function QuickAddModal({ currentDate, onClose }: QuickAddModalPro
                   id="googleMeet"
                   checked={formData.addGoogleMeet}
                   onChange={(e) => setFormData({ ...formData, addGoogleMeet: e.target.checked })}
-                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  className="rounded border-gray-300 text-primary-600"
                 />
                 <label htmlFor="googleMeet" className="text-sm text-gray-700 dark:text-gray-300 flex items-center">
                   <Video className="w-4 h-4 mr-1" />
-                  Add Google Meet video conferencing
+                  Add Google Meet
                 </label>
               </div>
             </>
           ) : (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                   Priority
                 </label>
                 <select
                   value={formData.priority}
                   onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full px-3 py-2 rounded-lg border bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -220,35 +216,33 @@ export default function QuickAddModal({ currentDate, onClose }: QuickAddModalPro
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                   Project
                 </label>
                 <select
                   value={formData.projectId}
                   onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full px-3 py-2 rounded-lg border bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 >
                   {state.projects.map(project => (
-                    <option key={project.id} value={project.id}>
-                      {project.name}
-                    </option>
+                    <option key={project.id} value={project.id}>{project.name}</option>
                   ))}
                 </select>
               </div>
             </div>
           )}
 
-          <div className="flex space-x-3 pt-4">
+          <div className="flex gap-2 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200"
+              className="flex-1 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg hover:from-primary-600 hover:to-accent-600 transition-all duration-200 shadow-lg hover:shadow-xl"
+              className="flex-1 py-2 rounded-lg bg-gradient-to-r from-primary-500 to-accent-500 text-white hover:from-primary-600 hover:to-accent-600 shadow-lg"
             >
               Add {activeTab === 'event' ? 'Event' : 'Todo'}
             </button>
