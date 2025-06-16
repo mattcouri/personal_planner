@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { format, isSameDay, setHours, setMinutes } from 'date-fns';
 import { useData } from '../contexts/DataContext';
-import { useDrop, useDrag } from 'react-dnd';
+import { useDrop } from 'react-dnd';
 import { v4 as uuidv4 } from 'uuid';
 import { CheckCircle2, Circle, Clock, Trash2 } from 'lucide-react';
 
@@ -51,23 +51,6 @@ export default function DailyPlanCenter({ currentDate }: DailyPlanCenterProps) {
   const timeSlots = Array.from({ length: 24 }, (_, i) =>
     format(setHours(setMinutes(new Date(), 0), i), 'h:mm a')
   );
-
-  const [{ isOver }, drop] = useDrop(() => ({
-    accept: ['calendar-event', 'todo-item', 'plan-item'],
-    drop: (item: any, monitor) => {
-      const result = monitor.getDropResult() as any;
-      if (result?.hour !== undefined) {
-        if (item.type === 'plan-item') {
-          moveExisting(item.id, result.hour);
-        } else {
-          handleNewDrop(item, result.hour);
-        }
-      }
-    },
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver(),
-    }),
-  }));
 
   const moveExisting = (id: string, hour: number) => {
     const dragged = dailyPlan.find(i => i.id === id);
@@ -156,10 +139,7 @@ export default function DailyPlanCenter({ currentDate }: DailyPlanCenterProps) {
   }, [currentDate]);
 
   return (
-    <div
-      ref={drop}
-      className="bg-white/80 dark:bg-gray-800/80 rounded-xl shadow-xl border overflow-hidden h-full"
-    >
+    <div className="bg-white/80 dark:bg-gray-800/80 rounded-xl shadow-xl border overflow-hidden h-full">
       <div className="p-6 border-b">
         <h3 className="text-lg font-semibold flex items-center text-gray-900 dark:text-white">
           <Clock className="w-5 h-5 mr-2 text-primary-500" />
@@ -175,11 +155,28 @@ export default function DailyPlanCenter({ currentDate }: DailyPlanCenterProps) {
           const items = getItemsForHour(hour);
           const isNow = hour === currentHour;
 
+          const [{ isOver }, hourDrop] = useDrop(() => ({
+            accept: ['calendar-event', 'todo-item', 'plan-item'],
+            drop: (item: any) => {
+              if (item.type === 'plan-item') {
+                moveExisting(item.id, hour);
+              } else {
+                handleNewDrop(item, hour);
+              }
+            },
+            collect: (monitor) => ({
+              isOver: !!monitor.isOver(),
+            }),
+          }));
+
           return (
             <div
               key={hour}
               id={`hour-${hour}`}
-              className="flex border-b min-h-[80px] hover:bg-gray-50 dark:hover:bg-gray-700/40 relative"
+              ref={hourDrop}
+              className={`flex border-b min-h-[80px] relative transition-all duration-150 ${
+                isOver ? 'bg-primary-50 dark:bg-primary-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'
+              }`}
             >
               {isNow && isSameDay(currentDate, new Date()) && (
                 <div
@@ -229,8 +226,7 @@ export default function DailyPlanCenter({ currentDate }: DailyPlanCenterProps) {
                           {item.title}
                         </h4>
                         <p className="text-xs text-gray-500">
-                          {format(item.start, 'h:mm a')} –{' '}
-                          {format(item.end, 'h:mm a')}
+                          {format(item.start, 'h:mm a')} – {format(item.end, 'h:mm a')}
                         </p>
                         {item.location && (
                           <p className="text-xs text-gray-600 truncate">📍 {item.location}</p>
