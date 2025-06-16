@@ -10,6 +10,8 @@ import QuickAddModal from '../components/QuickAddModal';
 export default function DailyPlan() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [editItem, setEditItem] = useState<any>(null);
+  const [editType, setEditType] = useState<'event' | 'todo' | 'plan'>('event');
   const [isAnimating, setIsAnimating] = useState(false);
   const { state } = useData();
 
@@ -34,6 +36,18 @@ export default function DailyPlan() {
       setCurrentDate(newDate);
       setIsAnimating(false);
     }, 300);
+  };
+
+  const handleEditItem = (item: any, type: 'plan') => {
+    setEditItem(item);
+    setEditType(type);
+    setShowQuickAdd(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowQuickAdd(false);
+    setEditItem(null);
+    setEditType('event');
   };
 
   return (
@@ -105,7 +119,10 @@ export default function DailyPlan() {
         </div>
 
         <div className="lg:col-span-2">
-          <DailyPlanCenter currentDate={currentDate} />
+          <DailyPlanCenter 
+            currentDate={currentDate} 
+            onEditItem={handleEditItem}
+          />
         </div>
 
         <div className="lg:col-span-1">
@@ -116,7 +133,9 @@ export default function DailyPlan() {
       {showQuickAdd && (
         <QuickAddModal
           currentDate={currentDate}
-          onClose={() => setShowQuickAdd(false)}
+          onClose={handleCloseModal}
+          editItem={editItem}
+          editType={editType}
         />
       )}
     </div>
