@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, CheckSquare, Filter, Search, Folder, Calendar } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { format } from 'date-fns';
+import QuickAddModal from '../components/QuickAddModal';
 
 export default function TodoList() {
   const { state, dispatch } = useData();
@@ -9,6 +10,8 @@ export default function TodoList() {
   const [filterProject, setFilterProject] = useState<string>('');
   const [filterPriority, setFilterPriority] = useState<string>('');
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [editTodo, setEditTodo] = useState<any>(null);
 
   // Filter todos
   const filteredTodos = state.todos.filter(todo => {
@@ -26,6 +29,16 @@ export default function TodoList() {
     if (todo) {
       dispatch({ type: 'UPDATE_TODO', payload: { ...todo, completed: !todo.completed } });
     }
+  };
+
+  const handleEditTodo = (todo: any) => {
+    setEditTodo(todo);
+    setShowQuickAdd(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowQuickAdd(false);
+    setEditTodo(null);
   };
 
   const getPriorityColor = (priority: string) => {
@@ -51,7 +64,10 @@ export default function TodoList() {
           </h1>
         </div>
 
-        <button className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg hover:from-primary-600 hover:to-accent-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+        <button 
+          onClick={() => setShowQuickAdd(true)}
+          className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg hover:from-primary-600 hover:to-accent-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+        >
           <Plus className="w-4 h-4" />
           <span>New Task</span>
         </button>
@@ -129,11 +145,14 @@ export default function TodoList() {
                 </button>
 
                 <div className="flex-1 min-w-0">
-                  <h3 className={`text-lg font-medium transition-all duration-200 ${
-                    todo.completed 
-                      ? 'line-through text-gray-500 dark:text-gray-400' 
-                      : 'text-gray-900 dark:text-white'
-                  }`}>
+                  <h3 
+                    className={`text-lg font-medium transition-all duration-200 cursor-pointer hover:text-primary-600 ${
+                      todo.completed 
+                        ? 'line-through text-gray-500 dark:text-gray-400' 
+                        : 'text-gray-900 dark:text-white'
+                    }`}
+                    onDoubleClick={() => handleEditTodo(todo)}
+                  >
                     {todo.title}
                   </h3>
                   
@@ -159,6 +178,15 @@ export default function TodoList() {
                         {format(todo.dueDate, 'MMM d, yyyy')}
                       </div>
                     )}
+
+                    {todo.duration && (
+                      <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                        <span>
+                          {todo.duration >= 60 ? `${Math.floor(todo.duration / 60)}h` : `${todo.duration}m`}
+                          {todo.duration >= 60 && todo.duration % 60 > 0 && ` ${todo.duration % 60}m`}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -176,6 +204,15 @@ export default function TodoList() {
           </div>
         )}
       </div>
+
+      {showQuickAdd && (
+        <QuickAddModal
+          currentDate={new Date()}
+          onClose={handleCloseModal}
+          editItem={editTodo}
+          editType="todo"
+        />
+      )}
     </div>
   );
 }

@@ -28,6 +28,7 @@ interface Todo {
   projectId: string;
   dueDate: Date;
   createdAt: Date;
+  duration?: number; // Duration in minutes
 }
 
 interface PlanItem {
@@ -42,6 +43,8 @@ interface PlanItem {
   location?: string;
   guests?: string[];
   meetLink?: string;
+  priority?: 'low' | 'medium' | 'high';
+  projectId?: string;
 }
 
 interface Project {
@@ -54,18 +57,82 @@ interface AppState {
   todos: Todo[];
   dailyPlans: Record<string, PlanItem[]>;
   projects: Project[];
+  passwords: any[];
+  habits: any[];
+  habitLegend: Record<string, { icon: string; label: string; color: string }>;
+  financialAccounts: any[];
+  financialTransactions: any[];
+  financialGoals: any[];
+  healthScores: any[];
 }
 
 type Action =
   | { type: 'ADD_EVENT'; payload: Event }
+  | { type: 'UPDATE_EVENT'; payload: Event }
   | { type: 'ADD_TODO'; payload: Todo }
-  | { type: 'SET_DAILY_PLAN'; payload: { date: string; items: PlanItem[] } };
+  | { type: 'UPDATE_TODO'; payload: Todo }
+  | { type: 'SET_DAILY_PLAN'; payload: { date: string; items: PlanItem[] } }
+  | { type: 'SET_HABIT'; payload: any }
+  | { type: 'SET_HEALTH_SCORE'; payload: any };
 
 const initialState: AppState = {
   events: [],
   todos: [],
   dailyPlans: {},
   projects: [{ id: 'default', name: 'General' }],
+  passwords: [
+    {
+      id: '1',
+      name: 'Gmail',
+      username: 'user@gmail.com',
+      password: 'securePassword123',
+      url: 'https://gmail.com',
+      notes: 'Primary email account'
+    }
+  ],
+  habits: [],
+  habitLegend: {
+    completed: { icon: '✓', label: 'Completed', color: '#10B981' },
+    partial: { icon: '◐', label: 'Partial', color: '#F59E0B' },
+    missed: { icon: '✗', label: 'Missed', color: '#EF4444' },
+    notScheduled: { icon: '−', label: 'Not Scheduled', color: '#6B7280' },
+  },
+  financialAccounts: [
+    { id: '1', name: 'Checking', type: 'checking', balance: 5000 },
+    { id: '2', name: 'Savings', type: 'savings', balance: 15000 },
+    { id: '3', name: 'Credit Card', type: 'credit', balance: -1200 }
+  ],
+  financialTransactions: [
+    {
+      id: '1',
+      description: 'Salary',
+      amount: 5000,
+      type: 'income',
+      category: 'Salary',
+      date: new Date(),
+      accountId: '1'
+    },
+    {
+      id: '2',
+      description: 'Groceries',
+      amount: 150,
+      type: 'expense',
+      category: 'Food',
+      date: new Date(),
+      accountId: '1'
+    }
+  ],
+  financialGoals: [
+    {
+      id: '1',
+      name: 'Emergency Fund',
+      targetAmount: 10000,
+      currentAmount: 3500,
+      deadline: new Date(2025, 11, 31),
+      weeklyContribution: 200
+    }
+  ],
+  healthScores: []
 };
 
 const DataContext = createContext<{
@@ -80,8 +147,22 @@ function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'ADD_EVENT':
       return { ...state, events: [...state.events, action.payload] };
+    case 'UPDATE_EVENT':
+      return {
+        ...state,
+        events: state.events.map(event =>
+          event.id === action.payload.id ? action.payload : event
+        ),
+      };
     case 'ADD_TODO':
       return { ...state, todos: [...state.todos, action.payload] };
+    case 'UPDATE_TODO':
+      return {
+        ...state,
+        todos: state.todos.map(todo =>
+          todo.id === action.payload.id ? action.payload : todo
+        ),
+      };
     case 'SET_DAILY_PLAN':
       return {
         ...state,
@@ -89,6 +170,22 @@ function reducer(state: AppState, action: Action): AppState {
           ...state.dailyPlans,
           [action.payload.date]: action.payload.items,
         },
+      };
+    case 'SET_HABIT':
+      return {
+        ...state,
+        habits: [
+          ...state.habits.filter(h => h.id !== action.payload.id),
+          action.payload,
+        ],
+      };
+    case 'SET_HEALTH_SCORE':
+      return {
+        ...state,
+        healthScores: [
+          ...state.healthScores.filter(s => s.id !== action.payload.id),
+          action.payload,
+        ],
       };
     default:
       return state;
@@ -120,7 +217,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         },
       });
 
-      // Dummy Todo
+      // Dummy Todo with duration
       dispatch({
         type: 'ADD_TODO',
         payload: {
@@ -132,6 +229,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           projectId: 'default',
           dueDate: now,
           createdAt: new Date(),
+          duration: 120, // 2 hours in minutes
         },
       });
 

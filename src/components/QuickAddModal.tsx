@@ -1,5 +1,5 @@
 // components/QuickAddModal.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X, Calendar, CheckSquare, Clock, MapPin, Users, Video
 } from 'lucide-react';
@@ -9,9 +9,16 @@ import { v4 as uuidv4 } from 'uuid';
 interface QuickAddModalProps {
   currentDate: Date;
   onClose: () => void;
+  editItem?: any; // Item to edit (event, todo, or plan item)
+  editType?: 'event' | 'todo' | 'plan';
 }
 
-export default function QuickAddModal({ currentDate, onClose }: QuickAddModalProps) {
+export default function QuickAddModal({ 
+  currentDate, 
+  onClose, 
+  editItem, 
+  editType 
+}: QuickAddModalProps) {
   const { state, dispatch } = useData();
   const [activeTab, setActiveTab] = useState<'event' | 'todo'>('event');
   const [formData, setFormData] = useState({
@@ -19,6 +26,8 @@ export default function QuickAddModal({ currentDate, onClose }: QuickAddModalPro
     description: '',
     startTime: '09:00',
     endTime: '10:00',
+    duration: 60, // Duration in minutes
+    useDuration: false, // Whether to use duration instead of end time
     priority: 'medium' as 'low' | 'medium' | 'high',
     projectId: state.projects[0]?.id || '',
     location: '',
@@ -26,19 +35,61 @@ export default function QuickAddModal({ currentDate, onClose }: QuickAddModalPro
     addGoogleMeet: false,
   });
 
+  // Pre-populate form when editing
+  useEffect(() => {
+    if (editItem) {
+      const startTime = editItem.start ? 
+        `${editItem.start.getHours().toString().padStart(2, '0')}:${editItem.start.getMinutes().toString().padStart(2, '0')}` : 
+        '09:00';
+      const endTime = editItem.end ? 
+        `${editItem.end.getHours().toString().padStart(2, '0')}:${editItem.end.getMinutes().toString().padStart(2, '0')}` : 
+        '10:00';
+      
+      const duration = editItem.start && editItem.end ? 
+        Math.round((editItem.end.getTime() - editItem.start.getTime()) / (1000 * 60)) : 
+        60;
+
+      setFormData({
+        title: editItem.title || '',
+        description: editItem.description || '',
+        startTime,
+        endTime,
+        duration,
+        useDuration: false,
+        priority: editItem.priority || 'medium',
+        projectId: editItem.projectId || state.projects[0]?.id || '',
+        location: editItem.location || '',
+        guests: editItem.guests ? editItem.guests.join(', ') : '',
+        addGoogleMeet: !!editItem.meetLink,
+      });
+
+      if (editType === 'plan') {
+        setActiveTab(editItem.type || 'event');
+      } else {
+        setActiveTab(editType || 'event');
+      }
+    }
+  }, [editItem, editType, state.projects]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (activeTab === 'event') {
       const [sh, sm] = formData.startTime.split(':').map(Number);
-      const [eh, em] = formData.endTime.split(':').map(Number);
+      let [eh, em] = formData.endTime.split(':').map(Number);
+      
       const start = new Date(currentDate);
       const end = new Date(currentDate);
       start.setHours(sh, sm, 0, 0);
-      end.setHours(eh, em, 0, 0);
+      
+      if (formData.useDuration) {
+        end.setTime(start.getTime() + formData.duration * 60 * 1000);
+      } else {
+        end.setHours(eh, em, 0, 0);
+      }
 
       const event = {
-        id: uuidv4(),
+        id: editItem?.originalId || editItem?.id || uuidv4(),
         title: formData.title,
         description: formData.description,
         start,
@@ -47,27 +98,57 @@ export default function QuickAddModal({ currentDate, onClose }: QuickAddModalPro
         location: formData.location,
         guests: formData.guests ? formData.guests.split(',').map(g => g.trim()) : [],
         meetLink: formData.addGoogleMeet
-          ? `https://meet.google.com/${Math.random().toString(36).substring(2, 9)}`
+          ? (editItem?.meetLink || `https://meet.google.com/${Math.random().toString(36).substring(2, 9)}`)
           : undefined,
       };
 
-      dispatch({ type: 'ADD_EVENT', payload: event });
+      if (editItem) {
+        dispatch({ type: 'UPDATE_EVENT', payload: event });
+      } else {
+        dispatch({ type: 'ADD_EVENT', payload: event });
+      }
     } else {
       const todo = {
-        id: uuidv4(),
+        id: editItem?.originalId || editItem?.id || uuidv4(),
         title: formData.title,
         description: formData.description,
-        completed: false,
+        completed: editItem?.completed || false,
         priority: formData.priority,
         projectId: formData.projectId,
         dueDate: new Date(currentDate),
-        createdAt: new Date(),
+        createdAt: editItem?.createdAt || new Date(),
+        duration: formData.useDuration ? formData.duration : 
+          (formData.endTime && formData.startTime ? 
+            ((parseInt(formData.endTime.split(':')[0]) * 60 + parseInt(formData.endTime.split(':')[1])) - 
+             (parseInt(formData.startTime.split(':')[0]) * 60 + parseInt(formData.startTime.split(':')[1]))) : 60),
       };
 
-      dispatch({ type: 'ADD_TODO', payload: todo });
+      if (editItem) {
+        dispatch({ type: 'UPDATE_TODO', payload: todo });
+      } else {
+        dispatch({ type: 'ADD_TODO', payload: todo });
+      }
     }
 
     onClose();
+  };
+
+  const handleDurationChange = (minutes: number) => {
+    setFormData({ ...formData, duration: minutes });
+    
+    // Update end time based on start time + duration
+    if (formData.startTime) {
+      const [sh, sm] = formData.startTime.split(':').map(Number);
+      const startMinutes = sh * 60 + sm;
+      const endMinutes = startMinutes + minutes;
+      const endHours = Math.floor(endMinutes / 60) % 24;
+      const endMins = endMinutes % 60;
+      setFormData(prev => ({
+        ...prev,
+        endTime: `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`,
+        duration: minutes
+      }));
+    }
   };
 
   return (
@@ -76,7 +157,7 @@ export default function QuickAddModal({ currentDate, onClose }: QuickAddModalPro
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Quick Add
+            {editItem ? 'Edit Item' : 'Quick Add'}
           </h3>
           <button
             onClick={onClose}
@@ -134,8 +215,73 @@ export default function QuickAddModal({ currentDate, onClose }: QuickAddModalPro
             />
           </div>
 
-          {activeTab === 'event' ? (
-            <>
+          {/* Time/Duration Section */}
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="useDuration"
+                checked={formData.useDuration}
+                onChange={(e) => setFormData({ ...formData, useDuration: e.target.checked })}
+                className="rounded border-gray-300 text-primary-600"
+              />
+              <label htmlFor="useDuration" className="text-sm text-gray-700 dark:text-gray-300">
+                Use duration instead of end time
+              </label>
+            </div>
+
+            {formData.useDuration ? (
+              <div>
+                <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+                  Duration
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDurationChange(30)}
+                    className={`px-3 py-2 rounded text-sm ${
+                      formData.duration === 30 
+                        ? 'bg-primary-500 text-white' 
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    30m
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDurationChange(60)}
+                    className={`px-3 py-2 rounded text-sm ${
+                      formData.duration === 60 
+                        ? 'bg-primary-500 text-white' 
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    1h
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDurationChange(120)}
+                    className={`px-3 py-2 rounded text-sm ${
+                      formData.duration === 120 
+                        ? 'bg-primary-500 text-white' 
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                    }`}
+                  >
+                    2h
+                  </button>
+                </div>
+                <input
+                  type="number"
+                  min="5"
+                  max="480"
+                  step="5"
+                  value={formData.duration}
+                  onChange={(e) => handleDurationChange(parseInt(e.target.value) || 60)}
+                  className="w-full mt-2 px-3 py-2 rounded-lg border bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="Custom duration (minutes)"
+                />
+              </div>
+            ) : (
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
@@ -160,7 +306,11 @@ export default function QuickAddModal({ currentDate, onClose }: QuickAddModalPro
                   />
                 </div>
               </div>
+            )}
+          </div>
 
+          {activeTab === 'event' ? (
+            <>
               <div>
                 <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1 flex items-center">
                   <MapPin className="w-4 h-4 mr-1" /> Location
@@ -182,6 +332,7 @@ export default function QuickAddModal({ currentDate, onClose }: QuickAddModalPro
                   value={formData.guests}
                   onChange={(e) => setFormData({ ...formData, guests: e.target.value })}
                   className="w-full px-3 py-2 rounded-lg border bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="Separate with commas"
                 />
               </div>
 
@@ -244,7 +395,7 @@ export default function QuickAddModal({ currentDate, onClose }: QuickAddModalPro
               type="submit"
               className="flex-1 py-2 rounded-lg bg-gradient-to-r from-primary-500 to-accent-500 text-white hover:from-primary-600 hover:to-accent-600 shadow-lg"
             >
-              Add {activeTab === 'event' ? 'Event' : 'Todo'}
+              {editItem ? 'Update' : 'Add'} {activeTab === 'event' ? 'Event' : 'Todo'}
             </button>
           </div>
         </form>
