@@ -16,6 +16,7 @@ export default function TodoList() {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [editTodo, setEditTodo] = useState<any>(null);
+  const [quickAddProjectId, setQuickAddProjectId] = useState<string>('');
 
   // Filter todos (exclude completed ones - they go to separate page)
   const filteredTodos = state.todos.filter(todo => {
@@ -44,6 +45,14 @@ export default function TodoList() {
   const handleCloseModal = () => {
     setShowQuickAdd(false);
     setEditTodo(null);
+    setQuickAddProjectId('');
+  };
+
+  const handleQuickAdd = (projectId?: string) => {
+    if (projectId) {
+      setQuickAddProjectId(projectId);
+    }
+    setShowQuickAdd(true);
   };
 
   const moveTaskToProject = (taskId: string, newProjectId: string) => {
@@ -85,6 +94,7 @@ export default function TodoList() {
               onEditTodo={handleEditTodo}
               onMoveTask={moveTaskToProject}
               getPriorityColor={getPriorityColor}
+              onQuickAdd={handleQuickAdd}
             />
           ))}
         </div>
@@ -121,7 +131,7 @@ export default function TodoList() {
           </a>
           
           <button 
-            onClick={() => setShowQuickAdd(true)}
+            onClick={() => handleQuickAdd()}
             className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg hover:from-primary-600 hover:to-accent-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
           >
             <Plus className="w-4 h-4" />
@@ -203,6 +213,7 @@ export default function TodoList() {
           onClose={handleCloseModal}
           editItem={editTodo}
           editType="todo"
+          defaultProjectId={quickAddProjectId}
         />
       )}
 
@@ -295,13 +306,15 @@ function ProjectColumn({
   onToggleTodo, 
   onEditTodo, 
   onMoveTask, 
-  getPriorityColor 
+  getPriorityColor,
+  onQuickAdd
 }: { 
   project: any; 
   onToggleTodo: (id: string) => void; 
   onEditTodo: (todo: any) => void;
   onMoveTask: (taskId: string, projectId: string) => void;
   getPriorityColor: (priority: string) => string;
+  onQuickAdd: (projectId: string) => void;
 }) {
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'todo-item',
@@ -328,9 +341,18 @@ function ProjectColumn({
             <Folder className="w-5 h-5 mr-2 text-primary-500" />
             {project.name}
           </h3>
-          <span className="bg-primary-100 dark:bg-primary-800 text-primary-700 dark:text-primary-200 px-2 py-1 rounded-full text-sm font-medium">
-            {project.todos.length}
-          </span>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => onQuickAdd(project.id)}
+              className="w-6 h-6 bg-primary-500 hover:bg-primary-600 text-white rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
+              title="Add task to this project"
+            >
+              <Plus className="w-3 h-3" />
+            </button>
+            <span className="bg-primary-100 dark:bg-primary-800 text-primary-700 dark:text-primary-200 px-2 py-1 rounded-full text-sm font-medium">
+              {project.todos.length}
+            </span>
+          </div>
         </div>
         
         <div className="space-y-3 max-h-96 overflow-y-auto">

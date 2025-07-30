@@ -11,13 +11,15 @@ interface QuickAddModalProps {
   onClose: () => void;
   editItem?: any; // Item to edit (event, todo, or plan item)
   editType?: 'event' | 'todo' | 'plan';
+  defaultProjectId?: string;
 }
 
 export default function QuickAddModal({ 
   currentDate, 
   onClose, 
   editItem, 
-  editType 
+  editType,
+  defaultProjectId
 }: QuickAddModalProps) {
   const { state, dispatch } = useData();
   const [activeTab, setActiveTab] = useState<'event' | 'todo'>('event');
@@ -28,8 +30,9 @@ export default function QuickAddModal({
     endTime: '10:00',
     duration: 60, // Duration in minutes
     useDuration: false, // Whether to use duration instead of end time
+    noTimeAssigned: true, // New checkbox for no time/duration
     priority: 'medium' as 'low' | 'medium' | 'high',
-    projectId: state.projects[0]?.id || '',
+    projectId: defaultProjectId || state.projects[0]?.id || '',
     location: '',
     guests: '',
     addGoogleMeet: false,
@@ -56,8 +59,9 @@ export default function QuickAddModal({
         endTime,
         duration,
         useDuration: false,
+        noTimeAssigned: true,
         priority: editItem.priority || 'medium',
-        projectId: editItem.projectId || state.projects[0]?.id || '',
+        projectId: editItem.projectId || defaultProjectId || state.projects[0]?.id || '',
         location: editItem.location || '',
         guests: editItem.guests ? editItem.guests.join(', ') : '',
         addGoogleMeet: !!editItem.meetLink,
@@ -68,8 +72,9 @@ export default function QuickAddModal({
       } else {
         setActiveTab(editType || 'event');
       }
+    } else if (defaultProjectId) {
+      setFormData(prev => ({ ...prev, projectId: defaultProjectId }));
     }
-  }, [editItem, editType, state.projects]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -220,8 +225,22 @@ export default function QuickAddModal({
             <div className="flex items-center space-x-2">
               <input
                 type="checkbox"
+                id="noTimeAssigned"
+                checked={formData.noTimeAssigned}
+                onChange={(e) => setFormData({ ...formData, noTimeAssigned: e.target.checked })}
+                className="rounded border-gray-300 text-primary-600"
+              />
+              <label htmlFor="noTimeAssigned" className="text-sm text-gray-700 dark:text-gray-300">
+                No time or duration assigned
+              </label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
                 id="useDuration"
                 checked={formData.useDuration}
+                disabled={formData.noTimeAssigned}
                 onChange={(e) => setFormData({ ...formData, useDuration: e.target.checked })}
                 className="rounded border-gray-300 text-primary-600"
               />
@@ -230,7 +249,7 @@ export default function QuickAddModal({
               </label>
             </div>
 
-            {formData.useDuration ? (
+            {!formData.noTimeAssigned && formData.useDuration ? (
               <div>
                 <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                   Duration
@@ -281,7 +300,7 @@ export default function QuickAddModal({
                   placeholder="Custom duration (minutes)"
                 />
               </div>
-            ) : (
+            ) : !formData.noTimeAssigned ? (
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
@@ -306,7 +325,7 @@ export default function QuickAddModal({
                   />
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
 
           {activeTab === 'event' ? (
