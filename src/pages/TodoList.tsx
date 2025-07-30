@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { Plus, CheckSquare, Filter, Search, Folder, Calendar } from 'lucide-react';
+import { Plus, CheckSquare, Filter, Search, Folder, Calendar, Grid3X3, List, Eye, EyeOff, FolderPlus } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { format } from 'date-fns';
 import QuickAddModal from '../components/QuickAddModal';
+import ProjectModal from '../components/ProjectModal';
+
+type ViewType = 'list' | 'kanban';
 
 export default function TodoList() {
   const { state, dispatch } = useData();
@@ -11,17 +14,20 @@ export default function TodoList() {
   const [filterPriority, setFilterPriority] = useState<string>('');
   const [showCompleted, setShowCompleted] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showProjectModal, setShowProjectModal] = useState(false);
   const [editTodo, setEditTodo] = useState<any>(null);
+  const [viewType, setViewType] = useState<ViewType>('list');
 
-  // Filter todos
+  // Filter todos (exclude completed ones - they go to separate page)
   const filteredTodos = state.todos.filter(todo => {
+    if (todo.completed && !showCompleted) return false;
+    
     const matchesSearch = todo.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          todo.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesProject = !filterProject || todo.projectId === filterProject;
     const matchesPriority = !filterPriority || todo.priority === filterPriority;
-    const matchesCompleted = showCompleted || !todo.completed;
     
-    return matchesSearch && matchesProject && matchesPriority && matchesCompleted;
+    return matchesSearch && matchesProject && matchesPriority;
   });
 
   const toggleTodo = (id: string) => {
@@ -53,6 +59,175 @@ export default function TodoList() {
     return state.projects.find(p => p.id === projectId)?.name || 'No Project';
   };
 
+  const renderListView = () => (
+    <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 divide-y divide-gray-200 dark:divide-gray-700">
+      {filteredTodos.length > 0 ? (
+        filteredTodos.map(todo => (
+          <div key={todo.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all duration-200">
+            <div className="flex items-start space-x-4">
+              <button
+                onClick={() => toggleTodo(todo.id)}
+                className={`mt-1 w-5 h-5 rounded-full border-2 transition-all duration-200 ${
+                  todo.completed
+                    ? 'bg-green-500 border-green-500 text-white'
+                    : 'border-gray-300 dark:border-gray-600 hover:border-primary-500'
+                }`}
+              >
+                {todo.completed && (
+                  <CheckSquare className="w-3 h-3 mx-auto" />
+                )}
+              </button>
+
+              <div className="flex-1 min-w-0">
+                <h3 
+                  className={`text-lg font-medium transition-all duration-200 cursor-pointer hover:text-primary-600 ${
+                    todo.completed 
+                      ? 'line-through text-gray-500 dark:text-gray-400' 
+                      : 'text-gray-900 dark:text-white'
+                  }`}
+                  onDoubleClick={() => handleEditTodo(todo)}
+                >
+                  {todo.title}
+                </h3>
+                
+                {todo.description && (
+                  <p className="text-gray-600 dark:text-gray-300 mt-1">
+                    {todo.description}
+                  </p>
+                )}
+
+                <div className="flex items-center space-x-4 mt-3">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPriorityColor(todo.priority)}`}>
+                    {todo.priority}
+                  </span>
+
+                  <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                    <Folder className="w-4 h-4 mr-1" />
+                    {getProjectName(todo.projectId)}
+                  </div>
+
+                  {todo.dueDate && (
+                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                      <Calendar className="w-4 h-4 mr-1" />
+                      {format(todo.dueDate, 'MMM d, yyyy')}
+                    </div>
+                  )}
+
+                  {todo.duration && (
+                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                      <span>
+                        {todo.duration >= 60 ? `${Math.floor(todo.duration / 60)}h` : `${todo.duration}m`}
+                        {todo.duration >= 60 && todo.duration % 60 > 0 && ` ${todo.duration % 60}m`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))
+      ) : (
+        <div className="p-12 text-center">
+          <CheckSquare className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            No tasks found
+          </h3>
+          <p className="text-gray-500 dark:text-gray-400">
+            Create your first task to get started with organizing your work.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderKanbanView = () => {
+    const projectColumns = state.projects.map(project => ({
+      ...project,
+      todos: filteredTodos.filter(todo => todo.projectId === project.id)
+    }));
+
+    return (
+      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6">
+        <div className="flex space-x-6 overflow-x-auto pb-4">
+          {projectColumns.map(project => (
+            <div key={project.id} className="flex-shrink-0 w-80">
+              <div className="bg-gradient-to-r from-primary-50 to-accent-50 dark:from-primary-900/20 dark:to-accent-900/20 rounded-lg p-4 border border-primary-200 dark:border-primary-700/50">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center">
+                    <Folder className="w-5 h-5 mr-2 text-primary-500" />
+                    {project.name}
+                  </h3>
+                  <span className="bg-primary-100 dark:bg-primary-800 text-primary-700 dark:text-primary-200 px-2 py-1 rounded-full text-sm font-medium">
+                    {project.todos.length}
+                  </span>
+                </div>
+                
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {project.todos.map(todo => (
+                    <div key={todo.id} className="bg-white dark:bg-gray-700 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all duration-200">
+                      <div className="flex items-start space-x-3">
+                        <button
+                          onClick={() => toggleTodo(todo.id)}
+                          className={`mt-1 w-4 h-4 rounded border-2 transition-all duration-200 ${
+                            todo.completed
+                              ? 'bg-green-500 border-green-500 text-white'
+                              : 'border-gray-300 dark:border-gray-500 hover:border-primary-500'
+                          }`}
+                        >
+                          {todo.completed && (
+                            <div className="w-2 h-2 bg-white rounded-full mx-auto mt-0.5"></div>
+                          )}
+                        </button>
+                        
+                        <div className="flex-1 min-w-0">
+                          <h4 
+                            className={`font-medium text-sm cursor-pointer hover:text-primary-600 ${
+                              todo.completed 
+                                ? 'line-through text-gray-500 dark:text-gray-400' 
+                                : 'text-gray-900 dark:text-white'
+                            }`}
+                            onDoubleClick={() => handleEditTodo(todo)}
+                          >
+                            {todo.title}
+                          </h4>
+                          
+                          {todo.description && (
+                            <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
+                              {todo.description}
+                            </p>
+                          )}
+                          
+                          <div className="flex items-center justify-between mt-2">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getPriorityColor(todo.priority)}`}>
+                              {todo.priority}
+                            </span>
+                            
+                            {todo.dueDate && (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {format(todo.dueDate, 'MMM d')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {project.todos.length === 0 && (
+                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                      <CheckSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No tasks in this project</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -64,18 +239,81 @@ export default function TodoList() {
           </h1>
         </div>
 
-        <button 
-          onClick={() => setShowQuickAdd(true)}
-          className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg hover:from-primary-600 hover:to-accent-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-        >
-          <Plus className="w-4 h-4" />
-          <span>New Task</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <a
+            href="/completed-tasks"
+            className="flex items-center space-x-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/40 transition-all duration-200 border border-green-300 dark:border-green-700/50"
+          >
+            <CheckSquare className="w-4 h-4" />
+            <span>Completed Tasks</span>
+          </a>
+          
+          <button 
+            onClick={() => setShowProjectModal(true)}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/40 transition-all duration-200 border border-blue-300 dark:border-blue-700/50"
+          >
+            <FolderPlus className="w-4 h-4" />
+            <span>Projects</span>
+          </button>
+          
+          <button 
+            onClick={() => setShowQuickAdd(true)}
+            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg hover:from-primary-600 hover:to-accent-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+          >
+            <Plus className="w-4 h-4" />
+            <span>New Task</span>
+          </button>
+        </div>
       </div>
 
-      {/* Filters */}
+      {/* View Toggle and Filters */}
       <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="flex items-center justify-between mb-4">
+          {/* View Toggle */}
+          <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+            <button
+              onClick={() => setViewType('list')}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                viewType === 'list'
+                  ? 'bg-primary-500 text-white shadow-lg'
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+              }`}
+            >
+              <List className="w-4 h-4" />
+              <span>List</span>
+            </button>
+            <button
+              onClick={() => setViewType('kanban')}
+              className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                viewType === 'kanban'
+                  ? 'bg-primary-500 text-white shadow-lg'
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+              }`}
+            >
+              <Grid3X3 className="w-4 h-4" />
+              <span>Kanban</span>
+            </button>
+          </div>
+
+          {/* Show Completed Toggle */}
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <button
+              onClick={() => setShowCompleted(!showCompleted)}
+              className={`p-2 rounded-lg transition-all duration-200 ${
+                showCompleted
+                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+              }`}
+            >
+              {showCompleted ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            </button>
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              {showCompleted ? 'Hide' : 'Show'} completed
+            </span>
+          </label>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -111,99 +349,11 @@ export default function TodoList() {
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
-
-          {/* Show Completed */}
-          <label className="flex items-center space-x-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={showCompleted}
-              onChange={(e) => setShowCompleted(e.target.checked)}
-              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-            />
-            <span className="text-sm text-gray-700 dark:text-gray-300">Show completed</span>
-          </label>
         </div>
       </div>
 
-      {/* Todo List */}
-      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 divide-y divide-gray-200 dark:divide-gray-700">
-        {filteredTodos.length > 0 ? (
-          filteredTodos.map(todo => (
-            <div key={todo.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all duration-200">
-              <div className="flex items-start space-x-4">
-                <button
-                  onClick={() => toggleTodo(todo.id)}
-                  className={`mt-1 w-5 h-5 rounded-full border-2 transition-all duration-200 ${
-                    todo.completed
-                      ? 'bg-green-500 border-green-500 text-white'
-                      : 'border-gray-300 dark:border-gray-600 hover:border-primary-500'
-                  }`}
-                >
-                  {todo.completed && (
-                    <CheckSquare className="w-3 h-3 mx-auto" />
-                  )}
-                </button>
-
-                <div className="flex-1 min-w-0">
-                  <h3 
-                    className={`text-lg font-medium transition-all duration-200 cursor-pointer hover:text-primary-600 ${
-                      todo.completed 
-                        ? 'line-through text-gray-500 dark:text-gray-400' 
-                        : 'text-gray-900 dark:text-white'
-                    }`}
-                    onDoubleClick={() => handleEditTodo(todo)}
-                  >
-                    {todo.title}
-                  </h3>
-                  
-                  {todo.description && (
-                    <p className="text-gray-600 dark:text-gray-300 mt-1">
-                      {todo.description}
-                    </p>
-                  )}
-
-                  <div className="flex items-center space-x-4 mt-3">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPriorityColor(todo.priority)}`}>
-                      {todo.priority}
-                    </span>
-
-                    <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                      <Folder className="w-4 h-4 mr-1" />
-                      {getProjectName(todo.projectId)}
-                    </div>
-
-                    {todo.dueDate && (
-                      <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                        <Calendar className="w-4 h-4 mr-1" />
-                        {format(todo.dueDate, 'MMM d, yyyy')}
-                      </div>
-                    )}
-
-                    {todo.duration && (
-                      <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-                        <span>
-                          {todo.duration >= 60 ? `${Math.floor(todo.duration / 60)}h` : `${todo.duration}m`}
-                          {todo.duration >= 60 && todo.duration % 60 > 0 && ` ${todo.duration % 60}m`}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="p-12 text-center">
-            <CheckSquare className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              No tasks found
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400">
-              Create your first task to get started with organizing your work.
-            </p>
-          </div>
-        )}
-      </div>
+      {/* Content */}
+      {viewType === 'list' ? renderListView() : renderKanbanView()}
 
       {showQuickAdd && (
         <QuickAddModal
@@ -212,6 +362,10 @@ export default function TodoList() {
           editItem={editTodo}
           editType="todo"
         />
+      )}
+
+      {showProjectModal && (
+        <ProjectModal onClose={() => setShowProjectModal(false)} />
       )}
     </div>
   );

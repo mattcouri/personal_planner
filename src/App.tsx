@@ -11,6 +11,7 @@ import Passwords from './pages/Passwords';
 import Habits from './pages/Habits';
 import Financial from './pages/Financial';
 import Health from './pages/Health';
+import CompletedTasks from './pages/CompletedTasks';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
                 <Route path="/habits" element={<Habits />} />
                 <Route path="/financial" element={<Financial />} />
                 <Route path="/health" element={<Health />} />
+                <Route path="/completed-tasks" element={<CompletedTasks />} />
               </Routes>
             </Layout>
           </Router>

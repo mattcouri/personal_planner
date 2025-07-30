@@ -71,6 +71,10 @@ type Action =
   | { type: 'UPDATE_EVENT'; payload: Event }
   | { type: 'ADD_TODO'; payload: Todo }
   | { type: 'UPDATE_TODO'; payload: Todo }
+  | { type: 'DELETE_TODO'; payload: string }
+  | { type: 'ADD_PROJECT'; payload: Project }
+  | { type: 'UPDATE_PROJECT'; payload: Project }
+  | { type: 'DELETE_PROJECT'; payload: string }
   | { type: 'SET_DAILY_PLAN'; payload: { date: string; items: PlanItem[] } }
   | { type: 'SET_HABIT'; payload: any }
   | { type: 'SET_HEALTH_SCORE'; payload: any };
@@ -161,6 +165,31 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         todos: state.todos.map(todo =>
           todo.id === action.payload.id ? action.payload : todo
+        ),
+      };
+    case 'DELETE_TODO':
+      return {
+        ...state,
+        todos: state.todos.filter(todo => todo.id !== action.payload),
+      };
+    case 'ADD_PROJECT':
+      return { ...state, projects: [...state.projects, action.payload] };
+    case 'UPDATE_PROJECT':
+      return {
+        ...state,
+        projects: state.projects.map(project =>
+          project.id === action.payload.id ? action.payload : project
+        ),
+      };
+    case 'DELETE_PROJECT':
+      return {
+        ...state,
+        projects: state.projects.filter(project => project.id !== action.payload),
+        // Move todos from deleted project to default project
+        todos: state.todos.map(todo =>
+          todo.projectId === action.payload
+            ? { ...todo, projectId: 'default' }
+            : todo
         ),
       };
     case 'SET_DAILY_PLAN':
