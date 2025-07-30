@@ -363,7 +363,7 @@ function ProjectColumn({
 }) {
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'todo-item',
-    drop: (item: any) => {
+    drop: (item: any, monitor) => {
       const didDrop = monitor.didDrop();
       if (didDrop) return;
       
