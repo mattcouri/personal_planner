@@ -58,10 +58,32 @@ export default function TodoList() {
   const moveTaskToProject = (taskId: string, newProjectId: string) => {
     const todo = state.todos.find(t => t.id === taskId);
     if (todo && todo.projectId !== newProjectId) {
-      dispatch({ 
-        type: 'UPDATE_TODO', 
-        payload: { ...todo, projectId: newProjectId } 
+      // Get the highest position in the target project
+      const targetProjectTodos = state.todos.filter(t => t.projectId === newProjectId);
+      const newPosition = targetProjectTodos.length;
+      
+      dispatch({
+        type: 'MOVE_TODO_TO_PROJECT',
+        payload: { todoId: taskId, newProjectId, newPosition }
       });
+    }
+  };
+
+  const reorderTodosInProject = (projectId: string, reorderedTodos: any[]) => {
+    const updatedTodos = reorderedTodos.map((todo, index) => ({
+      ...todo,
+      position: index
+    }));
+    
+    dispatch({
+      type: 'REORDER_TODOS',
+      payload: { projectId, todos: updatedTodos }
+    });
+  };
+
+  const deleteTodo = (todoId: string) => {
+    if (confirm('Are you sure you want to delete this task?')) {
+      dispatch({ type: 'DELETE_TODO', payload: todoId });
     }
   };
 
@@ -80,7 +102,9 @@ export default function TodoList() {
   const renderKanbanView = () => {
     const projectColumns = state.projects.map(project => ({
       ...project,
-      todos: filteredTodos.filter(todo => todo.projectId === project.id)
+      todos: filteredTodos
+        .filter(todo => todo.projectId === project.id)
+        .sort((a, b) => (a.position || 0) - (b.position || 0))
     }));
 
     return (
@@ -93,6 +117,8 @@ export default function TodoList() {
               onToggleTodo={toggleTodo}
               onEditTodo={handleEditTodo}
               onMoveTask={moveTaskToProject}
+              onReorderTodos={reorderTodosInProject}
+              onDeleteTodo={deleteTodo}
               getPriorityColor={getPriorityColor}
               onQuickAdd={handleQuickAdd}
             />
@@ -229,16 +255,20 @@ function DraggableTodoItem({
   todo, 
   onToggle, 
   onEdit, 
-  getPriorityColor 
+  onDelete,
+  getPriorityColor,
+  index
 }: { 
   todo: any; 
   onToggle: (id: string) => void; 
   onEdit: (todo: any) => void;
+  onDelete: (id: string) => void;
   getPriorityColor: (priority: string) => string;
+  index: number;
 }) {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'todo-item',
-    item: { id: todo.id, type: 'todo-move' },
+    item: { id: todo.id, type: 'todo-move', todo, index },
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
     }),
@@ -293,6 +323,17 @@ function DraggableTodoItem({
                 {format(todo.dueDate, 'MMM d')}
               </span>
             )}
+            
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(todo.id);
+              }}
+              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-gray-400 hover:text-red-500 p-1"
+              title="Delete task"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
           </div>
         </div>
       </div>
@@ -306,6 +347,8 @@ function ProjectColumn({
   onToggleTodo, 
   onEditTodo, 
   onMoveTask, 
+  onReorderTodos,
+  onDeleteTodo,
   getPriorityColor,
   onQuickAdd
 }: { 
@@ -313,14 +356,35 @@ function ProjectColumn({
   onToggleTodo: (id: string) => void; 
   onEditTodo: (todo: any) => void;
   onMoveTask: (taskId: string, projectId: string) => void;
+  onReorderTodos: (projectId: string, todos: any[]) => void;
+  onDeleteTodo: (todoId: string) => void;
   getPriorityColor: (priority: string) => string;
   onQuickAdd: (projectId: string) => void;
 }) {
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'todo-item',
     drop: (item: any) => {
+      const didDrop = monitor.didDrop();
+      if (didDrop) return;
+      
       if (item.type === 'todo-move') {
-        onMoveTask(item.id, project.id);
+        const draggedTodo = item.todo;
+        
+        if (draggedTodo.projectId === project.id) {
+          // Reordering within the same project
+          const hoverIndex = project.todos.length;
+          const dragIndex = item.index;
+          
+          if (dragIndex !== hoverIndex) {
+            const reorderedTodos = [...project.todos];
+            const draggedItem = reorderedTodos.splice(dragIndex, 1)[0];
+            reorderedTodos.splice(hoverIndex, 0, draggedItem);
+            onReorderTodos(project.id, reorderedTodos);
+          }
+        } else {
+          // Moving to different project
+          onMoveTask(item.id, project.id);
+        }
       }
     },
     collect: (monitor) => ({
@@ -356,12 +420,14 @@ function ProjectColumn({
         </div>
         
         <div className="space-y-3 max-h-96 overflow-y-auto">
-          {project.todos.map(todo => (
+          {project.todos.map((todo, index) => (
             <DraggableTodoItem
               key={todo.id}
               todo={todo}
+              index={index}
               onToggle={onToggleTodo}
               onEdit={onEditTodo}
+              onDelete={onDeleteTodo}
               getPriorityColor={getPriorityColor}
             />
           ))}

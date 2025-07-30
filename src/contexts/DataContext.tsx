@@ -29,6 +29,7 @@ interface Todo {
   dueDate: Date;
   createdAt: Date;
   duration?: number; // Duration in minutes
+  position: number; // Position within project for ordering
 }
 
 interface PlanItem {
@@ -72,6 +73,8 @@ type Action =
   | { type: 'ADD_TODO'; payload: Todo }
   | { type: 'UPDATE_TODO'; payload: Todo }
   | { type: 'DELETE_TODO'; payload: string }
+  | { type: 'REORDER_TODOS'; payload: { projectId: string; todos: Todo[] } }
+  | { type: 'MOVE_TODO_TO_PROJECT'; payload: { todoId: string; newProjectId: string; newPosition: number } }
   | { type: 'ADD_PROJECT'; payload: Project }
   | { type: 'UPDATE_PROJECT'; payload: Project }
   | { type: 'DELETE_PROJECT'; payload: string }
@@ -86,7 +89,12 @@ const initialState: AppState = {
   projects: [
     { id: 'work', name: 'Work Projects' },
     { id: 'personal', name: 'Personal Tasks' },
-    { id: 'health', name: 'Health & Fitness' }
+    { id: 'health', name: 'Health & Fitness' },
+    { id: 'finance', name: 'Financial Planning' },
+    { id: 'learning', name: 'Learning & Development' },
+    { id: 'home', name: 'Home & Family' },
+    { id: 'creative', name: 'Creative Projects' },
+    { id: 'travel', name: 'Travel & Adventures' }
   ],
   passwords: [
     {
@@ -217,6 +225,28 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         todos: state.todos.filter(todo => todo.id !== action.payload),
       };
+    case 'REORDER_TODOS':
+      return {
+        ...state,
+        todos: state.todos.map(todo => {
+          const updatedTodo = action.payload.todos.find(t => t.id === todo.id);
+          return updatedTodo || todo;
+        }),
+      };
+    case 'MOVE_TODO_TO_PROJECT':
+      return {
+        ...state,
+        todos: state.todos.map(todo => {
+          if (todo.id === action.payload.todoId) {
+            return { ...todo, projectId: action.payload.newProjectId, position: action.payload.newPosition };
+          }
+          // Adjust positions of other todos in the target project
+          if (todo.projectId === action.payload.newProjectId && todo.position >= action.payload.newPosition) {
+            return { ...todo, position: todo.position + 1 };
+          }
+          return todo;
+        }),
+      };
     case 'ADD_PROJECT':
       return { ...state, projects: [...state.projects, action.payload] };
     case 'UPDATE_PROJECT':
@@ -323,14 +353,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         type: 'ADD_TODO',
         payload: {
           id: 'todo1',
-          title: 'Complete Project Proposal',
-          description: 'Finalize the Q1 project proposal document',
+          title: 'Review quarterly reports',
+          description: 'Analyze Q4 performance metrics and prepare summary',
           completed: false,
           priority: 'high',
           projectId: 'work',
           dueDate: now,
           createdAt: new Date(),
           duration: 180,
+          position: 0,
         },
       });
 
@@ -338,14 +369,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         type: 'ADD_TODO',
         payload: {
           id: 'todo2',
-          title: 'Review Code Changes',
-          description: 'Review pull requests from the development team',
+          title: 'Team standup meeting',
+          description: 'Daily sync with development team',
           completed: false,
           priority: 'medium',
           projectId: 'work',
           dueDate: new Date(now.getTime() + 24 * 60 * 60 * 1000),
           createdAt: new Date(),
           duration: 90,
+          position: 1,
         },
       });
 
@@ -353,14 +385,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         type: 'ADD_TODO',
         payload: {
           id: 'todo3',
-          title: 'Plan Weekend Trip',
-          description: 'Research and book accommodation for weekend getaway',
+          title: 'Update project timeline',
+          description: 'Revise milestones based on recent changes',
           completed: false,
-          priority: 'low',
-          projectId: 'personal',
+          priority: 'medium',
+          projectId: 'work',
           dueDate: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000),
           createdAt: new Date(),
           duration: 60,
+          position: 2,
         },
       });
 
@@ -368,14 +401,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         type: 'ADD_TODO',
         payload: {
           id: 'todo4',
-          title: 'Morning Workout',
-          description: '45-minute cardio and strength training session',
-          completed: true,
+          title: 'Grocery shopping',
+          description: 'Buy ingredients for weekly meal prep',
+          completed: false,
           priority: 'medium',
-          projectId: 'health',
+          projectId: 'personal',
           dueDate: now,
           createdAt: new Date(),
           duration: 45,
+          position: 0,
         },
       });
 
@@ -383,14 +417,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         type: 'ADD_TODO',
         payload: {
           id: 'todo5',
-          title: 'Grocery Shopping',
-          description: 'Buy ingredients for meal prep this week',
+          title: 'Call mom',
+          description: 'Weekly check-in call with family',
           completed: false,
-          priority: 'medium',
+          priority: 'high',
           projectId: 'personal',
           dueDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
           createdAt: new Date(),
-          duration: 75,
+          duration: 30,
+          position: 1,
         },
       });
 
@@ -398,13 +433,127 @@ export function DataProvider({ children }: { children: ReactNode }) {
         type: 'ADD_TODO',
         payload: {
           id: 'todo6',
-          title: 'Schedule Annual Checkup',
-          description: 'Book appointment with primary care physician',
+          title: 'Organize home office',
+          description: 'Declutter and reorganize workspace',
+          completed: false,
+          priority: 'low',
+          projectId: 'personal',
+          dueDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 120,
+          position: 2,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo7',
+          title: 'Morning workout',
+          description: '45-minute cardio and strength training',
           completed: false,
           priority: 'high',
           projectId: 'health',
-          dueDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+          dueDate: now,
           createdAt: new Date(),
+          duration: 45,
+          position: 0,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo8',
+          title: 'Meal prep Sunday',
+          description: 'Prepare healthy meals for the week',
+          completed: false,
+          priority: 'medium',
+          projectId: 'health',
+          dueDate: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 90,
+          position: 1,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo9',
+          title: 'Review investment portfolio',
+          description: 'Check performance and rebalance if needed',
+          completed: false,
+          priority: 'medium',
+          projectId: 'finance',
+          dueDate: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 60,
+          position: 0,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo10',
+          title: 'Complete React course',
+          description: 'Finish advanced React patterns module',
+          completed: false,
+          priority: 'high',
+          projectId: 'learning',
+          dueDate: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 120,
+          position: 0,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo11',
+          title: 'Fix kitchen faucet',
+          description: 'Replace the leaky kitchen faucet',
+          completed: false,
+          priority: 'high',
+          projectId: 'home',
+          dueDate: new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 90,
+          position: 0,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo12',
+          title: 'Design new logo',
+          description: 'Create logo concepts for client project',
+          completed: false,
+          priority: 'medium',
+          projectId: 'creative',
+          dueDate: new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 180,
+          position: 0,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo13',
+          title: 'Book flight to Paris',
+          description: 'Find and book flights for summer vacation',
+          completed: false,
+          priority: 'low',
+          projectId: 'travel',
+          dueDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 45,
+          position: 0,
         },
       });
 
