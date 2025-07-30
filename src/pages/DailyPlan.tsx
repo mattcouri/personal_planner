@@ -21,6 +21,10 @@ export default function DailyPlan() {
   const totalItems = dailyPlan.length;
   const completedItems = dailyPlan.filter(item => item.completed).length;
   const progress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
+  const upcomingItems = dailyPlan
+    .filter(item => !item.completed && item.start > new Date())
+    .sort((a, b) => a.start.getTime() - b.start.getTime())
+    .slice(0, 3);
 
   const navigateDate = (direction: 'prev' | 'next') => {
     setIsAnimating(true);
@@ -90,18 +94,30 @@ export default function DailyPlan() {
         </div>
 
         {/* Progress Bar */}
-        <div className="bg-white/80 dark:bg-gray-800/80 rounded-xl p-6 shadow-xl border">
+        <div className="bg-white/80 dark:bg-gray-800/80 rounded-xl p-6 shadow-xl border border-gray-200/50 dark:border-gray-700/50">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
-              Daily Progress
-            </span>
-            <span className="text-sm font-bold text-primary-600 dark:text-primary-400">
-              {completedItems} of {totalItems} completed ({Math.round(progress)}%)
-            </span>
+            <div>
+              <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                Daily Progress
+              </span>
+              {upcomingItems.length > 0 && (
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Next: {upcomingItems[0].title} at {format(upcomingItems[0].start, 'h:mm a')}
+                </div>
+              )}
+            </div>
+            <div className="text-right">
+              <span className="text-sm font-bold text-primary-600 dark:text-primary-400">
+                {completedItems} of {totalItems} completed
+              </span>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {Math.round(progress)}% complete
+              </div>
+            </div>
           </div>
           <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-primary-500 to-accent-500 rounded-full transition-all duration-1000 ease-out"
+              className="h-full bg-gradient-to-r from-primary-500 to-accent-500 rounded-full transition-all duration-1000 ease-out animate-progress-fill"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -109,7 +125,7 @@ export default function DailyPlan() {
       </div>
 
       {/* Layout */}
-      <div className={`grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-[600px] ${isAnimating ? 'opacity-50' : 'opacity-100'}`}>
+      <div className={`grid grid-cols-1 lg:grid-cols-5 gap-6 min-h-[700px] transition-opacity duration-300 ${isAnimating ? 'opacity-50' : 'opacity-100'}`}>
         <div className="lg:col-span-1">
           <CalendarSidebar
             currentDate={currentDate}
@@ -118,7 +134,7 @@ export default function DailyPlan() {
           />
         </div>
 
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-3">
           <DailyPlanCenter 
             currentDate={currentDate} 
             onEditItem={handleEditItem}
