@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, CheckSquare, Filter, Search, Folder, Calendar, Eye, EyeOff, FolderPlus } from 'lucide-react';
+import { Plus, CheckSquare, Filter, Search, Folder, Calendar, Eye, EyeOff, FolderPlus, Trash2 } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { format } from 'date-fns';
 import QuickAddModal from '../components/QuickAddModal';
