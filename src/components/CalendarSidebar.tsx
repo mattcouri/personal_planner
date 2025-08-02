@@ -32,17 +32,11 @@ export default function CalendarSidebar({
     ...upcomingEvents.filter(event => !selectedDateEvents.some(e => e.id === event.id))
   ];
 
-  const unscheduledTodos = state.todos.filter(todo => 
-    !todo.completed && 
-    !state.dailyPlans[format(currentDate, 'yyyy-MM-dd')]?.some(
-      plan => plan.originalId === todo.id && plan.type === 'todo'
-    )
-  );
 
   return (
-    <div className="space-y-4 h-full">
+    <div className="h-full">
       {/* Events Section */}
-      <div className="bg-white/80 dark:bg-gray-800/80 rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-4">
+      <div className="bg-white/80 dark:bg-gray-800/80 rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-4 h-full">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
             <Calendar className="w-5 h-5 mr-2 text-primary-500" />
@@ -57,7 +51,7 @@ export default function CalendarSidebar({
         </div>
 
         {allEvents.length > 0 ? (
-          <div className="space-y-2 max-h-64 overflow-y-auto">
+          <div className="space-y-2 max-h-full overflow-y-auto">
             {selectedDateEvents.length > 0 && (
               <>
                 <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
@@ -83,33 +77,6 @@ export default function CalendarSidebar({
         ) : (
           <p className="text-sm text-gray-500 dark:text-gray-400">
             No events scheduled.
-          </p>
-        )}
-      </div>
-
-      {/* Unscheduled Tasks */}
-      <div className="bg-white/80 dark:bg-gray-800/80 rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-4 flex-1">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
-            <div className="w-5 h-5 mr-2 bg-amber-500 rounded-full flex items-center justify-center">
-              <div className="w-2 h-2 bg-white rounded-full"></div>
-            </div>
-            Unscheduled
-          </h2>
-          <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-1 rounded-full">
-            {unscheduledTodos.length}
-          </span>
-        </div>
-
-        {unscheduledTodos.length > 0 ? (
-          <div className="space-y-2 max-h-80 overflow-y-auto">
-            {unscheduledTodos.map((todo) => (
-              <DraggableUnscheduledTodo key={todo.id} todo={todo} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            All tasks are scheduled!
           </p>
         )}
       </div>
@@ -153,41 +120,3 @@ function DraggableCalendarEvent({ event, isToday }: { event: any; isToday: boole
   );
 }
 
-function DraggableUnscheduledTodo({ todo }: { todo: any }) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
-    id: todo.id,
-  });
-
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-  } : undefined;
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
-      className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-lg shadow-sm cursor-move transition-all duration-200 hover:shadow-md hover:bg-amber-100 dark:hover:bg-amber-900/30"
-    >
-      <h4 className="font-medium text-sm text-gray-900 dark:text-white truncate">
-        {todo.title}
-      </h4>
-      <div className="flex items-center justify-between mt-1">
-        <span className={`text-xs px-2 py-0.5 rounded-full ${
-          todo.priority === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' :
-          todo.priority === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' :
-          'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-        }`}>
-          {todo.priority}
-        </span>
-        {todo.duration && (
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            {todo.duration >= 60 ? `${Math.floor(todo.duration / 60)}h` : `${todo.duration}m`}
-            {todo.duration >= 60 && todo.duration % 60 > 0 && ` ${todo.duration % 60}m`}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}

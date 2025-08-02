@@ -10,11 +10,8 @@ interface TodoSidebarProps {
 export default function TodoSidebar({ onQuickAdd }: TodoSidebarProps) {
   const { state } = useData();
 
-  // Show high priority and overdue todos
-  const priorityTodos = state.todos.filter(todo => 
-    !todo.completed && 
-    (todo.priority === 'high' || todo.dueDate < new Date())
-  ).slice(0, 5);
+  // Show all incomplete todos
+  const allTodos = state.todos.filter(todo => !todo.completed);
 
   const completedToday = state.todos.filter(todo => 
     todo.completed && 
@@ -23,63 +20,36 @@ export default function TodoSidebar({ onQuickAdd }: TodoSidebarProps) {
   ).length;
 
   return (
-    <div className="space-y-4 h-full">
-      {/* Quick Stats */}
-      <div className="bg-white/80 dark:bg-gray-800/80 rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-4">
+    <div className="h-full">
+      {/* All To-Dos */}
+      <div className="bg-white/80 dark:bg-gray-800/80 rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-4 h-full">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
             <ClipboardList className="w-5 h-5 mr-2 text-primary-500" />
-            Quick Stats
+            To-Dos
           </h2>
-        </div>
-        
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-700/50">
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">Completed Today</span>
-            </div>
-            <span className="text-lg font-bold text-green-600 dark:text-green-400">{completedToday}</span>
-          </div>
-          
-          <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-700/50">
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-              <span className="text-sm font-medium text-gray-900 dark:text-white">High Priority</span>
-            </div>
-            <span className="text-lg font-bold text-red-600 dark:text-red-400">
-              {state.todos.filter(t => !t.completed && t.priority === 'high').length}
+          <div className="flex items-center space-x-3">
+            <span className="text-xs bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 px-2 py-1 rounded-full">
+              {allTodos.length} active
             </span>
+            <button
+              onClick={onQuickAdd}
+              className="text-sm px-3 py-1 rounded-md bg-primary-500 text-white hover:bg-primary-600 transition-all duration-200"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* Priority Tasks */}
-      <div className="bg-white/80 dark:bg-gray-800/80 rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-4 flex-1">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
-            <div className="w-5 h-5 mr-2 bg-red-500 rounded-full flex items-center justify-center">
-              <div className="w-2 h-2 bg-white rounded-full"></div>
-            </div>
-            Priority Tasks
-          </h2>
-          <button
-            onClick={onQuickAdd}
-            className="text-sm px-3 py-1 rounded-md bg-primary-500 text-white hover:bg-primary-600 transition-all duration-200"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-        </div>
-
-        {priorityTodos.length > 0 ? (
-          <div className="space-y-2 max-h-80 overflow-y-auto">
-            {priorityTodos.map((todo) => (
+        {allTodos.length > 0 ? (
+          <div className="space-y-2 max-h-full overflow-y-auto">
+            {allTodos.map((todo) => (
               <DraggableTodo key={todo.id} todo={todo} />
             ))}
           </div>
         ) : (
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            No high priority tasks!
+            No active todos!
           </p>
         )}
       </div>
@@ -102,10 +72,12 @@ function DraggableTodo({ todo }: { todo: any }) {
       style={style}
       {...listeners}
       {...attributes}
-      className={`p-3 rounded-lg shadow-sm cursor-move hover:shadow-md transition-all duration-200 ${
-        todo.dueDate < new Date() 
-          ? 'bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700/50' 
-          : 'bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700/50'
+      className={`p-3 rounded-lg shadow-sm cursor-move hover:shadow-md transition-all duration-200 border ${
+        todo.priority === 'high' 
+          ? 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-700/50' 
+          : todo.priority === 'medium'
+          ? 'bg-yellow-100 dark:bg-yellow-900/30 border-yellow-300 dark:border-yellow-700/50'
+          : 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-700/50'
       }`}
     >
       <h4 className="font-medium text-sm text-gray-900 dark:text-white truncate">
