@@ -1,113 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { format, addDays, subDays } from 'date-fns';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { format, addMinutes } from 'date-fns';
+import { Clock, MapPin, Users, Video, Edit3, Check, X } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
-import CalendarSidebar from '../components/CalendarSidebar';
-import TodoSidebar from '../components/TodoSidebar';
-import DailyPlanCenter from '../components/DailyPlanCenter';
-import QuickAddModal from '../components/QuickAddModal';
-import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core';
-export default function DailyPlan() {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [editItem, setEditItem] = useState<any>(null);
-  const [editType, setEditType] = useState<'event' | 'todo' | 'plan'>('event');
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [draggedItem, setDraggedItem] = useState<any>(null);
-  const { state, dispatch } = useData();
+import { useDroppable } from '@dnd-kit/core';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
+interface DailyPlanCenterProps {
+  currentDate: Date;
+  onEditItem: (item: any, type: 'plan') => void;
+}
+
+export default function DailyPlanCenter({ currentDate, onEditItem }: DailyPlanCenterProps) {
+  const { state, dispatch } = useData();
   const dateKey = format(currentDate, 'yyyy-MM-dd');
   const dailyPlan = state.dailyPlans[dateKey] || [];
 
-  const totalItems = dailyPlan.length;
-  const completedItems = dailyPlan.filter(item => item.completed).length;
-  const progress = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
-  const upcomingItems = dailyPlan
-    .filter(item => !item.completed && item.start > new Date())
-    .sort((a, b) => a.start.getTime() - b.start.getTime())
-    .slice(0, 3);
-
-  const navigateDate = (direction: 'prev' | 'next') => {
-    setIsAnimating(true);
-    setTimeout(() => {
-      setCurrentDate(direction === 'next' ? addDays(currentDate, 1) : subDays(currentDate, 1));
-      setIsAnimating(false);
-    }, 300);
-  };
-
-  const handleDateChange = (newDate: Date) => {
-    setIsAnimating(true);
-    setTimeout(() => {
-      setCurrentDate(newDate);
-      setIsAnimating(false);
-    }, 300);
-  };
-
-  const handleEditItem = (item: any, type: 'plan') => {
-    setEditItem(item);
-    setEditType(type);
-    setShowQuickAdd(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowQuickAdd(false);
-    setEditItem(null);
-    setEditType('event');
-  };
-
-  // Handle drag and drop events
-  const handleDragStart = (event: DragStartEvent) => {
-    const { active } = event;
-    const item = state.events.find(e => e.id === active.id) ||
-                 state.todos.find(t => t.id === active.id) ||
-                 dailyPlan.find(p => p.id === active.id);
-    setDraggedItem(item);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setDraggedItem(null);
-
-    if (!over) return;
-
-    const overId = over.id as string;
-
-    // Check if dropping on a time slot
-    if (overId.startsWith('time-slot-')) {
-      const slotIndex = parseInt(overId.replace('time-slot-', ''));
-      const hour = Math.floor(slotIndex / 4);
-      const minute = (slotIndex % 4) * 15;
-
-      // Check if it's an existing plan item being moved
-      const existingItem = dailyPlan.find(i => i.id === active.id);
-      if (existingItem) {
-        moveExistingItem(active.id as string, hour, minute);
-      } else {
-        // It's a new item from sidebar
-        const sourceItem = state.events.find(e => e.id === active.id) ||
-                          state.todos.find(t => t.id === active.id);
-        if (sourceItem) {
-          addNewItemToPlan(sourceItem, hour, minute);
-        }
-      }
+  // Generate time slots (24 hours, 15-minute intervals)
+  const timeSlots = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 15) {
+      timeSlots.push({ hour, minute });
     }
-  };
+  }
 
-  const moveExistingItem = (itemId: string, hour: number, minute: number) => {
+  const toggleItemCompletion = (itemId: string) => {
     const item = dailyPlan.find(i => i.id === itemId);
     if (!item) return;
 
-    const duration = (item.end.getTime() - item.start.getTime()) / (1000 * 60);
-    const newStart = new Date(currentDate);
-    newStart.setHours(hour, minute, 0, 0);
-    const newEnd = new Date(newStart.getTime() + duration * 60 * 1000);
-
-    const updatedItem = {
-      ...item,
-      start: newStart,
-      end: newEnd,
-    };
-
+    const updatedItem = { ...item, completed: !item.completed };
     const updatedPlan = dailyPlan.map(planItem =>
       planItem.id === itemId ? updatedItem : planItem
     );
@@ -116,176 +37,276 @@ export default function DailyPlan() {
       type: 'SET_DAILY_PLAN',
       payload: { date: dateKey, items: updatedPlan },
     });
+
+    // Also update the original todo if it exists
+    if (item.type === 'todo' && item.originalId) {
+      const originalTodo = state.todos.find(t => t.id === item.originalId);
+      if (originalTodo) {
+        dispatch({
+          type: 'UPDATE_TODO',
+          payload: { ...originalTodo, completed: updatedItem.completed }
+        });
+      }
+    }
   };
 
-  const addNewItemToPlan = (sourceItem: any, hour: number, minute: number) => {
-    const isEvent = sourceItem.color !== undefined || sourceItem.meetLink !== undefined;
-    
-    // Check if item already exists in plan
-    const exists = dailyPlan.find(
-      i => i.originalId === sourceItem.id && i.type === (isEvent ? 'event' : 'todo')
-    );
-
-    let duration = 60; // Default 1 hour
-    
-    if (sourceItem.start && sourceItem.end) {
-      duration = Math.ceil((sourceItem.end.getTime() - sourceItem.start.getTime()) / (1000 * 60));
-    } else if (sourceItem.duration) {
-      duration = sourceItem.duration;
-    }
-
-    const newStart = new Date(currentDate);
-    newStart.setHours(hour, minute, 0, 0);
-    const newEnd = new Date(newStart.getTime() + duration * 60 * 1000);
-
-    const planItem = {
-      id: exists?.id || `plan-${Date.now()}`,
-      title: sourceItem.title,
-      description: sourceItem.description,
-      start: newStart,
-      end: newEnd,
-      type: isEvent ? 'event' : 'todo',
-      originalId: sourceItem.id,
-      completed: sourceItem.completed || false,
-      location: sourceItem.location,
-      guests: sourceItem.guests,
-      meetLink: sourceItem.meetLink,
-      priority: sourceItem.priority,
-      projectId: sourceItem.projectId,
-    };
-
-    const updatedPlan = exists
-      ? dailyPlan.map(item => item.id === exists.id ? planItem : item)
-      : [...dailyPlan, planItem];
-
+  const removeItemFromPlan = (itemId: string) => {
+    const updatedPlan = dailyPlan.filter(item => item.id !== itemId);
     dispatch({
       type: 'SET_DAILY_PLAN',
       payload: { date: dateKey, items: updatedPlan },
     });
   };
 
+  const getItemsForSlot = (hour: number, minute: number) => {
+    return dailyPlan.filter(item => {
+      const itemHour = item.start.getHours();
+      const itemMinute = item.start.getMinutes();
+      return itemHour === hour && Math.floor(itemMinute / 15) * 15 === minute;
+    });
+  };
+
   return (
-    <DndContext
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      modifiers={[restrictToWindowEdges]}
+    <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+          <Clock className="w-5 h-5 mr-2 text-primary-500" />
+          Daily Schedule
+        </h3>
+      </div>
+
+      <div className="max-h-[600px] overflow-y-auto">
+        <div className="grid grid-cols-1">
+          {timeSlots.map((slot, index) => {
+            const slotItems = getItemsForSlot(slot.hour, slot.minute);
+            const timeString = format(
+              new Date().setHours(slot.hour, slot.minute, 0, 0),
+              'HH:mm'
+            );
+
+            return (
+              <TimeSlot
+                key={`${slot.hour}-${slot.minute}`}
+                hour={slot.hour}
+                minute={slot.minute}
+                timeString={timeString}
+                items={slotItems}
+                onToggleCompletion={toggleItemCompletion}
+                onRemoveItem={removeItemFromPlan}
+                onEditItem={onEditItem}
+                slotIndex={index}
+              />
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TimeSlot({
+  hour,
+  minute,
+  timeString,
+  items,
+  onToggleCompletion,
+  onRemoveItem,
+  onEditItem,
+  slotIndex,
+}: {
+  hour: number;
+  minute: number;
+  timeString: string;
+  items: any[];
+  onToggleCompletion: (id: string) => void;
+  onRemoveItem: (id: string) => void;
+  onEditItem: (item: any, type: 'plan') => void;
+  slotIndex: number;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `time-slot-${slotIndex}`,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex border-b border-gray-100 dark:border-gray-700 min-h-[60px] transition-all duration-200 ${
+        isOver ? 'bg-primary-50 dark:bg-primary-900/20 border-primary-200 dark:border-primary-700' : ''
+      }`}
     >
-      <div className="space-y-8 min-h-screen">
-        {/* Header */}
-        <div className={`transition-all duration-300 ${isAnimating ? 'animate-page-flip' : 'animate-fade-in'}`}>
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => navigateDate('prev')}
-                className="p-2 rounded-lg bg-white/80 dark:bg-gray-800/80 hover:shadow-xl border transition-all duration-200"
-              >
-                <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-              </button>
+      {/* Time Label */}
+      <div className="w-20 p-3 text-sm text-gray-500 dark:text-gray-400 border-r border-gray-100 dark:border-gray-700 flex-shrink-0">
+        {minute === 0 && (
+          <div className="font-medium">
+            {format(new Date().setHours(hour, 0, 0, 0), 'h a')}
+          </div>
+        )}
+      </div>
 
-              <div className="text-center">
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">
-                  DAILY PLAN
-                </h1>
-                <p className="text-lg text-gray-600 dark:text-gray-300 font-medium">
-                  {format(currentDate, 'EEEE, MMMM d, yyyy')}
-                </p>
+      {/* Content Area */}
+      <div className="flex-1 p-3 space-y-2">
+        {items.length > 0 ? (
+          items.map((item) => (
+            <ScheduledItem
+              key={item.id}
+              item={item}
+              onToggleCompletion={onToggleCompletion}
+              onRemoveItem={onRemoveItem}
+              onEditItem={onEditItem}
+            />
+          ))
+        ) : (
+          <div className={`h-full flex items-center justify-center text-gray-300 dark:text-gray-600 transition-all duration-200 ${
+            isOver ? 'text-primary-400 dark:text-primary-500' : ''
+          }`}>
+            {isOver && (
+              <div className="text-sm font-medium">
+                Drop here to schedule at {timeString}
               </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
-              <button
-                onClick={() => navigateDate('next')}
-                className="p-2 rounded-lg bg-white/80 dark:bg-gray-800/80 hover:shadow-xl border transition-all duration-200"
-              >
-                <ChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-              </button>
+function ScheduledItem({
+  item,
+  onToggleCompletion,
+  onRemoveItem,
+  onEditItem,
+}: {
+  item: any;
+  onToggleCompletion: (id: string) => void;
+  onRemoveItem: (id: string) => void;
+  onEditItem: (item: any, type: 'plan') => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const duration = Math.round((item.end.getTime() - item.start.getTime()) / (1000 * 60));
+  const endTime = format(item.end, 'HH:mm');
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`p-3 rounded-lg border cursor-move transition-all duration-200 ${
+        isDragging ? 'opacity-50 scale-95' : ''
+      } ${
+        item.completed
+          ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700/50'
+          : item.type === 'event'
+          ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700/50'
+          : item.priority === 'high'
+          ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700/50'
+          : item.priority === 'medium'
+          ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700/50'
+          : 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700/50'
+      }`}
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex items-start space-x-3 flex-1">
+          <button
+            onClick={() => onToggleCompletion(item.id)}
+            className={`mt-1 w-4 h-4 rounded border-2 transition-all duration-200 flex items-center justify-center ${
+              item.completed
+                ? 'bg-green-500 border-green-500 text-white'
+                : 'border-gray-300 dark:border-gray-500 hover:border-primary-500'
+            }`}
+          >
+            {item.completed && <Check className="w-3 h-3" />}
+          </button>
+
+          <div className="flex-1 min-w-0">
+            <h4
+              className={`font-medium text-sm cursor-pointer hover:text-primary-600 ${
+                item.completed
+                  ? 'line-through text-gray-500 dark:text-gray-400'
+                  : 'text-gray-900 dark:text-white'
+              }`}
+              onDoubleClick={() => onEditItem(item, 'plan')}
+            >
+              {item.title}
+            </h4>
+
+            <div className="flex items-center space-x-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
+              <span>{format(item.start, 'HH:mm')} - {endTime}</span>
+              <span>({duration}m)</span>
+              {item.type === 'todo' && item.priority && (
+                <span className={`px-2 py-0.5 rounded-full text-xs ${
+                  item.priority === 'high' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' :
+                  item.priority === 'medium' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300' :
+                  'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                }`}>
+                  {item.priority}
+                </span>
+              )}
             </div>
 
-            <button
-              onClick={() => setShowQuickAdd(true)}
-              className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg hover:scale-105 shadow-lg transition-all duration-200"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Quick Add</span>
-            </button>
-          </div>
+            {item.description && (
+              <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
+                {item.description}
+              </p>
+            )}
 
-          {/* Progress Bar */}
-          <div className="bg-white/80 dark:bg-gray-800/80 rounded-xl p-6 shadow-xl border border-gray-200/50 dark:border-gray-700/50">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
-                  Daily Progress
-                </span>
-                {upcomingItems.length > 0 && (
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    Next: {upcomingItems[0].title} at {format(upcomingItems[0].start, 'h:mm a')}
+            {/* Event-specific details */}
+            {item.type === 'event' && (
+              <div className="flex items-center space-x-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
+                {item.location && (
+                  <div className="flex items-center space-x-1">
+                    <MapPin className="w-3 h-3" />
+                    <span>{item.location}</span>
+                  </div>
+                )}
+                {item.guests && item.guests.length > 0 && (
+                  <div className="flex items-center space-x-1">
+                    <Users className="w-3 h-3" />
+                    <span>{item.guests.length} guests</span>
+                  </div>
+                )}
+                {item.meetLink && (
+                  <div className="flex items-center space-x-1">
+                    <Video className="w-3 h-3" />
+                    <span>Meet</span>
                   </div>
                 )}
               </div>
-              <div className="text-right">
-                <span className="text-sm font-bold text-primary-600 dark:text-primary-400">
-                  {completedItems} of {totalItems} completed
-                </span>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {Math.round(progress)}% complete
-                </div>
-              </div>
-            </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-primary-500 to-accent-500 rounded-full transition-all duration-1000 ease-out"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Main Layout - Three Column Grid */}
-        <div className={`grid grid-cols-1 lg:grid-cols-5 gap-6 min-h-[700px] transition-opacity duration-300 ${isAnimating ? 'opacity-50' : 'opacity-100'}`}>
-          {/* Left Sidebar - Calendar Events */}
-          <div className="lg:col-span-1">
-            <CalendarSidebar
-              currentDate={currentDate}
-              onDateChange={handleDateChange}
-              onQuickAdd={() => setShowQuickAdd(true)}
-            />
-          </div>
-
-          {/* Center - Time Grid Calendar */}
-          <div className="lg:col-span-3">
-            <DailyPlanCenter 
-              currentDate={currentDate} 
-              onEditItem={handleEditItem}
-            />
-          </div>
-
-          {/* Right Sidebar - Todo Lists */}
-          <div className="lg:col-span-1">
-            <TodoSidebar onQuickAdd={() => setShowQuickAdd(true)} />
-          </div>
+        <div className="flex items-center space-x-1 ml-2">
+          <button
+            onClick={() => onEditItem(item, 'plan')}
+            className="p-1 text-gray-400 hover:text-blue-500 transition-colors duration-200"
+            title="Edit item"
+          >
+            <Edit3 className="w-3 h-3" />
+          </button>
+          <button
+            onClick={() => onRemoveItem(item.id)}
+            className="p-1 text-gray-400 hover:text-red-500 transition-colors duration-200"
+            title="Remove from schedule"
+          >
+            <X className="w-3 h-3" />
+          </button>
         </div>
-
-        {/* Drag Overlay */}
-        {draggedItem && (
-          <div className="fixed pointer-events-none z-50 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-xl border opacity-80">
-            <div className="text-sm font-medium text-gray-900 dark:text-white">
-              {draggedItem.title}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              Drag to schedule
-            </div>
-          </div>
-        )}
-
-        {/* Quick Add Modal */}
-        {showQuickAdd && (
-          <QuickAddModal
-            currentDate={currentDate}
-            onClose={handleCloseModal}
-            editItem={editItem}
-            editType={editType}
-          />
-        )}
       </div>
-    </DndContext>
+    </div>
   );
 }
