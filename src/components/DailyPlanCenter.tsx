@@ -1,9 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { format, isSameDay, setHours, setMinutes, addMinutes } from 'date-fns';
 import { useData } from '../contexts/DataContext';
-import { useDroppable, useDraggable } from '@dnd-kit/core';
+import { 
+  useDroppable, 
+  useDraggable, 
+  DragEndEvent,
+  DragOverEvent,
+  DragStartEvent 
+} from '@dnd-kit/core';
 import { v4 as uuidv4 } from 'uuid';
 import { CheckCircle2, Circle, Clock, Trash2, Edit3, Plus, MoreHorizontal } from 'lucide-react';
+import DragDropProvider from './DragDropProvider';
 
 interface DailyPlanCenterProps {
   currentDate: Date;
@@ -72,6 +79,43 @@ export default function DailyPlanCenter({ currentDate, onEditItem }: DailyPlanCe
     }
   }, [currentDate, dateKey, state.events, state.todos]);
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const item = dailyPlan.find(i => i.id === active.id) || 
+                 state.events.find(e => e.id === active.id) ||
+                 state.todos.find(t => t.id === active.id);
+    setDraggedItem(item);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setDraggedItem(null);
+
+    if (!over) return;
+
+    const overId = over.id as string;
+    
+    // Check if dropping on a time slot
+    if (overId.startsWith('time-slot-')) {
+      const slotIndex = parseInt(overId.replace('time-slot-', ''));
+      const hour = Math.floor(slotIndex / 4);
+      const minute = (slotIndex % 4) * 15;
+      
+      // Check if it's an existing plan item being moved
+      const existingItem = dailyPlan.find(i => i.id === active.id);
+      if (existingItem) {
+        moveExisting(active.id as string, hour, minute);
+      } else {
+        // It's a new item from sidebar
+        const sourceItem = state.events.find(e => e.id === active.id) ||
+                          state.todos.find(t => t.id === active.id);
+        if (sourceItem) {
+          handleNewDrop(sourceItem, hour, minute);
+        }
+      }
+    }
+  };
+
   const moveExisting = (id: string, hour: number, minute: number = 0) => {
     const dragged = dailyPlan.find(i => i.id === id);
     if (!dragged) return;
@@ -89,7 +133,7 @@ export default function DailyPlanCenter({ currentDate, onEditItem }: DailyPlanCe
   };
 
   const handleNewDrop = (item: any, hour: number, minute: number = 0) => {
-    const isEvent = item.sourceType === 'calendar';
+    const isEvent = item.color !== undefined || item.meetLink !== undefined; // Events have these properties
     const exists = dailyPlan.find(
       i => i.originalId === item.id && i.type === (isEvent ? 'event' : 'todo')
     );
@@ -168,6 +212,7 @@ export default function DailyPlanCenter({ currentDate, onEditItem }: DailyPlanCe
           time,
           label: minute === 0 ? format(time, 'h:mm a') : '',
           isHour: minute === 0,
+          slotIndex: hour * 4 + minute / 15,
         });
       }
     }
@@ -206,92 +251,157 @@ export default function DailyPlanCenter({ currentDate, onEditItem }: DailyPlanCe
     }
   }, [currentDate, currentHour, currentMinutes]);
 
+  return (
+    <DragDropProvider onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div className="bg-white/80 dark:bg-gray-800/80 rounded-xl shadow-xl border overflow-hidden h-full flex flex-col">
+        <div className="p-6 border-b bg-gradient-to-r from-primary-50 to-accent-50 dark:from-primary-900/20 dark:to-accent-900/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold flex items-center text-gray-900 dark:text-white">
+                <Clock className="w-5 h-5 mr-2 text-primary-500" />
+                Time Blocks
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Drag tasks and events to schedule your day
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">
+                {sortedItems.filter(item => item.completed).length}/{sortedItems.length}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">completed</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-hidden">
+          <TimeGrid
+            timeSlots={timeSlots}
+            sortedItems={sortedItems}
+            currentDate={currentDate}
+            currentHour={currentHour}
+            currentMinutes={currentMinutes}
+            getItemStyle={getItemStyle}
+            onToggleComplete={toggleComplete}
+            onRemoveItem={removeItem}
+            onEditItem={handleEditItem}
+          />
+        </div>
+      </div>
+    </DragDropProvider>
+  );
+}
+
+function TimeGrid({
+  timeSlots,
+  sortedItems,
+  currentDate,
+  currentHour,
+  currentMinutes,
+  getItemStyle,
+  onToggleComplete,
+  onRemoveItem,
+  onEditItem,
+}: {
+  timeSlots: any[];
+  sortedItems: any[];
+  currentDate: Date;
+  currentHour: number;
+  currentMinutes: number;
+  getItemStyle: (item: any) => any;
+  onToggleComplete: (id: string) => void;
+  onRemoveItem: (id: string) => void;
+  onEditItem: (item: any) => void;
+}) {
   const { setNodeRef, isOver } = useDroppable({
     id: 'time-grid',
   });
 
   return (
-    <div className="bg-white/80 dark:bg-gray-800/80 rounded-xl shadow-xl border overflow-hidden h-full flex flex-col">
-      <div className="p-6 border-b bg-gradient-to-r from-primary-50 to-accent-50 dark:from-primary-900/20 dark:to-accent-900/20">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold flex items-center text-gray-900 dark:text-white">
-              <Clock className="w-5 h-5 mr-2 text-primary-500" />
-              Time Blocks
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Drag tasks and events to schedule your day
-            </p>
-          </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold text-primary-600 dark:text-primary-400">
-              {sortedItems.filter(item => item.completed).length}/{sortedItems.length}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">completed</div>
-          </div>
+    <div 
+      ref={setNodeRef}
+      id="time-grid"
+      className={`h-full overflow-y-auto relative ${isOver ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''}`}
+      style={{ scrollBehavior: 'smooth' }}
+    >
+      {/* Time grid background */}
+      <div className="relative" style={{ height: `${timeSlots.length * 20}px` }}>
+        {/* Time labels and grid lines */}
+        {timeSlots.map((slot, index) => (
+          <TimeSlot
+            key={index}
+            slot={slot}
+            index={index}
+            currentDate={currentDate}
+            currentHour={currentHour}
+            currentMinutes={currentMinutes}
+          />
+        ))}
+
+        {/* Scheduled items */}
+        <div className="absolute left-20 right-0 top-0 bottom-0">
+          {sortedItems.map((item) => (
+            <ScheduledItem
+              key={item.id}
+              item={item}
+              style={getItemStyle(item)}
+              onToggleComplete={onToggleComplete}
+              onRemove={onRemoveItem}
+              onEdit={onEditItem}
+            />
+          ))}
         </div>
       </div>
+    </div>
+  );
+}
 
-      <div className="flex-1 overflow-hidden">
-        <div 
-          ref={setNodeRef}
-          id="time-grid"
-          className={`h-full overflow-y-auto relative ${isOver ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''}`}
-          style={{ scrollBehavior: 'smooth' }}
-        >
-          {/* Time grid background */}
-          <div className="relative" style={{ height: `${timeSlots.length * 20}px` }}>
-            {/* Time labels and grid lines */}
-            {timeSlots.map((slot, index) => (
-              <div
-                key={index}
-                id={`slot-${index}`}
-                className={`absolute left-0 right-0 flex ${
-                  slot.isHour ? 'border-t border-gray-200 dark:border-gray-700' : 'border-t border-gray-100 dark:border-gray-800'
-                }`}
-                style={{ top: `${index * 20}px`, height: '20px' }}
-              >
-                {slot.label && (
-                  <div className="w-20 px-3 text-xs text-gray-500 dark:text-gray-400 bg-gray-50/80 dark:bg-gray-800/80 border-r border-gray-200 dark:border-gray-700 flex items-center">
-                    {slot.label}
-                  </div>
-                )}
-                <div className="flex-1 relative">
-                  {/* Current time indicator */}
-                  {isSameDay(currentDate, new Date()) && 
-                   slot.hour === currentHour && 
-                   currentMinutes >= slot.minute && 
-                   currentMinutes < slot.minute + 15 && (
-                    <div 
-                      className="absolute left-0 right-0 h-0.5 bg-red-500 z-20"
-                      style={{ 
-                        top: `${((currentMinutes - slot.minute) / 15) * 20}px`
-                      }}
-                    >
-                      <div className="absolute -left-1 -top-1 w-3 h-3 bg-red-500 rounded-full"></div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+function TimeSlot({
+  slot,
+  index,
+  currentDate,
+  currentHour,
+  currentMinutes,
+}: {
+  slot: any;
+  index: number;
+  currentDate: Date;
+  currentHour: number;
+  currentMinutes: number;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `time-slot-${index}`,
+  });
 
-            {/* Scheduled items */}
-            <div className="absolute left-20 right-0 top-0 bottom-0">
-              {sortedItems.map((item) => (
-                <ScheduledItem
-                  key={item.id}
-                  item={item}
-                  style={getItemStyle(item)}
-                  onToggleComplete={toggleComplete}
-                  onRemove={removeItem}
-                  onEdit={handleEditItem}
-                  onDragStart={() => setDraggedItem(item)}
-                  onDragEnd={() => setDraggedItem(null)}
-                />
-              ))}
-            </div>
-          </div>
+  return (
+    <div
+      ref={setNodeRef}
+      id={`slot-${index}`}
+      className={`absolute left-0 right-0 flex transition-colors duration-200 ${
+        slot.isHour ? 'border-t border-gray-200 dark:border-gray-700' : 'border-t border-gray-100 dark:border-gray-800'
+      } ${isOver ? 'bg-primary-100 dark:bg-primary-800/30' : ''}`}
+      style={{ top: `${index * 20}px`, height: '20px' }}
+    >
+      {slot.label && (
+        <div className="w-20 px-3 text-xs text-gray-500 dark:text-gray-400 bg-gray-50/80 dark:bg-gray-800/80 border-r border-gray-200 dark:border-gray-700 flex items-center">
+          {slot.label}
         </div>
+      )}
+      <div className="flex-1 relative">
+        {/* Current time indicator */}
+        {isSameDay(currentDate, new Date()) && 
+         slot.hour === currentHour && 
+         currentMinutes >= slot.minute && 
+         currentMinutes < slot.minute + 15 && (
+          <div 
+            className="absolute left-0 right-0 h-0.5 bg-red-500 z-20"
+            style={{ 
+              top: `${((currentMinutes - slot.minute) / 15) * 20}px`
+            }}
+          >
+            <div className="absolute -left-1 -top-1 w-3 h-3 bg-red-500 rounded-full"></div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -303,16 +413,12 @@ function ScheduledItem({
   onToggleComplete, 
   onRemove, 
   onEdit,
-  onDragStart,
-  onDragEnd
 }: { 
   item: any; 
   style: any;
   onToggleComplete: (id: string) => void; 
   onRemove: (id: string) => void;
   onEdit: (item: any) => void;
-  onDragStart: () => void;
-  onDragEnd: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: item.id,
@@ -340,8 +446,6 @@ function ScheduledItem({
           : 'bg-amber-100 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700/50 hover:bg-amber-200 dark:hover:bg-amber-900/40'
       }`}
       style={{ ...style, ...dragStyle }}
-      onMouseDown={onDragStart}
-      onMouseUp={onDragEnd}
     >
       <div className={`p-2 h-full flex ${isShort ? 'items-center' : 'flex-col'}`}>
         <div className="flex items-start justify-between flex-1 min-w-0">
