@@ -7,8 +7,6 @@ import TodoSidebar from '../components/TodoSidebar';
 import DailyPlanCenter from '../components/DailyPlanCenter';
 import QuickAddModal from '../components/QuickAddModal';
 import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core';
-import { restrictToWindowEdges } from '@dnd-kit/modifiers';
-
 export default function DailyPlan() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showQuickAdd, setShowQuickAdd] = useState(false);
