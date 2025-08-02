@@ -72,7 +72,6 @@ export default function DragDropProvider({
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
-      modifiers={[restrictToWindowEdges]}
     >
       {children}
       <DragOverlay>
