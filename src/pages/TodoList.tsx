@@ -4,8 +4,10 @@ import { useData } from '../contexts/DataContext';
 import { format } from 'date-fns';
 import QuickAddModal from '../components/QuickAddModal';
 import ProjectModal from '../components/ProjectModal';
-import { useDrop } from 'react-dnd';
-import { useDrag } from 'react-dnd';
+import { useDroppable } from '@dnd-kit/core';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import DragDropProvider from '../components/DragDropProvider';
 
 export default function TodoList() {
   const { state, dispatch } = useData();
@@ -81,6 +83,46 @@ export default function TodoList() {
     });
   };
 
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    
+    if (!over) return;
+    
+    const activeId = active.id;
+    const overId = over.id;
+    
+    // Check if we're dropping on a project column
+    if (overId.startsWith('project-')) {
+      const newProjectId = overId.replace('project-', '');
+      const draggedTodo = state.todos.find(t => t.id === activeId);
+      
+      if (draggedTodo && draggedTodo.projectId !== newProjectId) {
+        moveTaskToProject(activeId, newProjectId);
+      }
+    }
+    
+    // Handle reordering within the same project
+    if (activeId !== overId) {
+      const activeItem = state.todos.find(t => t.id === activeId);
+      const overItem = state.todos.find(t => t.id === overId);
+      
+      if (activeItem && overItem && activeItem.projectId === overItem.projectId) {
+        const projectTodos = state.todos
+          .filter(t => t.projectId === activeItem.projectId)
+          .sort((a, b) => (a.position || 0) - (b.position || 0));
+        
+        const oldIndex = projectTodos.findIndex(t => t.id === activeId);
+        const newIndex = projectTodos.findIndex(t => t.id === overId);
+        
+        const reorderedTodos = [...projectTodos];
+        const [removed] = reorderedTodos.splice(oldIndex, 1);
+        reorderedTodos.splice(newIndex, 0, removed);
+        
+        reorderTodosInProject(activeItem.projectId, reorderedTodos);
+      }
+    }
+  };
+
   const deleteTodo = (todoId: string) => {
     if (confirm('Are you sure you want to delete this task?')) {
       dispatch({ type: 'DELETE_TODO', payload: todoId });
@@ -108,23 +150,23 @@ export default function TodoList() {
     }));
 
     return (
-      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6">
-        <div className="flex space-x-6 overflow-x-auto pb-4">
-          {projectColumns.map(project => (
-            <ProjectColumn 
-              key={project.id} 
-              project={project} 
-              onToggleTodo={toggleTodo}
-              onEditTodo={handleEditTodo}
-              onMoveTask={moveTaskToProject}
-              onReorderTodos={reorderTodosInProject}
-              onDeleteTodo={deleteTodo}
-              getPriorityColor={getPriorityColor}
-              onQuickAdd={handleQuickAdd}
-            />
-          ))}
+      <DragDropProvider onDragEnd={handleDragEnd}>
+        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6">
+          <div className="flex space-x-6 overflow-x-auto pb-4">
+            {projectColumns.map(project => (
+              <ProjectColumn 
+                key={project.id} 
+                project={project} 
+                onToggleTodo={toggleTodo}
+                onEditTodo={handleEditTodo}
+                onDeleteTodo={deleteTodo}
+                getPriorityColor={getPriorityColor}
+                onQuickAdd={handleQuickAdd}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      </DragDropProvider>
     );
   };
 
@@ -266,17 +308,26 @@ function DraggableTodoItem({
   getPriorityColor: (priority: string) => string;
   index: number;
 }) {
-  const [{ isDragging }, drag] = useDrag(() => ({
-    type: 'todo-item',
-    item: { id: todo.id, type: 'todo-move', todo, index },
-    collect: (monitor) => ({
-      isDragging: !!monitor.isDragging(),
-    }),
-  }));
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: todo.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
   return (
     <div 
-      ref={drag}
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
       className={`bg-white dark:bg-gray-700 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all duration-200 cursor-move ${
         isDragging ? 'opacity-50 scale-95' : ''
       }`}
@@ -346,8 +397,6 @@ function ProjectColumn({
   project, 
   onToggleTodo, 
   onEditTodo, 
-  onMoveTask, 
-  onReorderTodos,
   onDeleteTodo,
   getPriorityColor,
   onQuickAdd
@@ -355,47 +404,18 @@ function ProjectColumn({
   project: any; 
   onToggleTodo: (id: string) => void; 
   onEditTodo: (todo: any) => void;
-  onMoveTask: (taskId: string, projectId: string) => void;
-  onReorderTodos: (projectId: string, todos: any[]) => void;
   onDeleteTodo: (todoId: string) => void;
   getPriorityColor: (priority: string) => string;
   onQuickAdd: (projectId: string) => void;
 }) {
-  const [{ isOver }, drop] = useDrop(() => ({
-    accept: 'todo-item',
-    drop: (item: any, monitor) => {
-      const didDrop = monitor.didDrop();
-      if (didDrop) return;
-      
-      if (item.type === 'todo-move') {
-        const draggedTodo = item.todo;
-        
-        if (draggedTodo.projectId === project.id) {
-          // Reordering within the same project
-          const hoverIndex = project.todos.length;
-          const dragIndex = item.index;
-          
-          if (dragIndex !== hoverIndex) {
-            const reorderedTodos = [...project.todos];
-            const draggedItem = reorderedTodos.splice(dragIndex, 1)[0];
-            reorderedTodos.splice(hoverIndex, 0, draggedItem);
-            onReorderTodos(project.id, reorderedTodos);
-          }
-        } else {
-          // Moving to different project
-          onMoveTask(item.id, project.id);
-        }
-      }
-    },
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver(),
-    }),
-  }));
+  const { setNodeRef, isOver } = useDroppable({
+    id: `project-${project.id}`,
+  });
 
   return (
     <div className="flex-shrink-0 w-80">
       <div 
-        ref={drop}
+        ref={setNodeRef}
         className={`bg-gradient-to-r from-primary-50 to-accent-50 dark:from-primary-900/20 dark:to-accent-900/20 rounded-lg p-4 border border-primary-200 dark:border-primary-700/50 transition-all duration-200 ${
           isOver ? 'ring-2 ring-primary-400 bg-primary-100 dark:bg-primary-800/30' : ''
         }`}

@@ -1,8 +1,7 @@
-// components/TodoSidebar.tsx
 import React from 'react';
 import { ClipboardList, Plus } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
-import { useDrag } from 'react-dnd';
+import { useDraggable } from '@dnd-kit/core';
 
 interface TodoSidebarProps {
   onQuickAdd: () => void;
@@ -89,23 +88,20 @@ export default function TodoSidebar({ onQuickAdd }: TodoSidebarProps) {
 }
 
 function DraggableTodo({ todo }: { todo: any }) {
-  const [, drag] = useDrag(() => ({
-    type: 'todo-item',
-    item: {
-      id: todo.id,
-      title: todo.title,
-      description: todo.description,
-      sourceType: 'todo',
-      duration: todo.duration || 60, // Include duration for proper scheduling
-      priority: todo.priority,
-      projectId: todo.projectId,
-      completed: todo.completed,
-    },
-  }));
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    id: todo.id,
+  });
+
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+  } : undefined;
 
   return (
     <div
-      ref={drag}
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
       className={`p-3 rounded-lg shadow-sm cursor-move hover:shadow-md transition-all duration-200 ${
         todo.dueDate < new Date() 
           ? 'bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700/50' 

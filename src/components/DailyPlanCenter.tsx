@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { format, isSameDay, setHours, setMinutes, addMinutes } from 'date-fns';
 import { useData } from '../contexts/DataContext';
-import { useDrop, useDrag } from 'react-dnd';
+import { useDroppable, useDraggable } from '@dnd-kit/core';
 import { v4 as uuidv4 } from 'uuid';
 import { CheckCircle2, Circle, Clock, Trash2, Edit3, Plus, MoreHorizontal } from 'lucide-react';
 
@@ -206,31 +206,9 @@ export default function DailyPlanCenter({ currentDate, onEditItem }: DailyPlanCe
     }
   }, [currentDate, currentHour, currentMinutes]);
 
-  const [{ isOver }, drop] = useDrop(() => ({
-    accept: ['calendar-event', 'todo-item', 'plan-item'],
-    drop: (item: any, monitor) => {
-      const offset = monitor.getClientOffset();
-      if (!offset) return;
-
-      const container = document.getElementById('time-grid');
-      if (!container) return;
-
-      const rect = container.getBoundingClientRect();
-      const relativeY = offset.y - rect.top;
-      const slotIndex = Math.floor(relativeY / 20); // 20px per slot
-      const hour = Math.floor(slotIndex / 4);
-      const minute = (slotIndex % 4) * 15;
-
-      if (item.type === 'plan-item') {
-        moveExisting(item.id, hour, minute);
-      } else {
-        handleNewDrop(item, hour, minute);
-      }
-    },
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver(),
-    }),
-  }));
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'time-grid',
+  });
 
   return (
     <div className="bg-white/80 dark:bg-gray-800/80 rounded-xl shadow-xl border overflow-hidden h-full flex flex-col">
@@ -256,7 +234,7 @@ export default function DailyPlanCenter({ currentDate, onEditItem }: DailyPlanCe
 
       <div className="flex-1 overflow-hidden">
         <div 
-          ref={drop}
+          ref={setNodeRef}
           id="time-grid"
           className={`h-full overflow-y-auto relative ${isOver ? 'bg-primary-50/50 dark:bg-primary-900/10' : ''}`}
           style={{ scrollBehavior: 'smooth' }}
@@ -336,27 +314,22 @@ function ScheduledItem({
   onDragStart: () => void;
   onDragEnd: () => void;
 }) {
-  const [{ isDragging }, drag] = useDrag(() => ({
-    type: 'plan-item',
-    item: {
-      id: item.id,
-      type: 'plan-item',
-      title: item.title,
-      start: item.start,
-      end: item.end,
-      originalId: item.originalId,
-    },
-    collect: (monitor) => ({
-      isDragging: !!monitor.isDragging(),
-    }),
-  }));
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: item.id,
+  });
+
+  const dragStyle = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+  } : undefined;
 
   const duration = Math.round((item.end.getTime() - item.start.getTime()) / (1000 * 60));
   const isShort = duration <= 30;
 
   return (
     <div
-      ref={drag}
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
       className={`absolute left-1 right-1 rounded-lg border cursor-move transition-all duration-200 group hover:shadow-lg ${
         isDragging ? 'opacity-50 scale-95' : ''
       } ${
@@ -366,7 +339,7 @@ function ScheduledItem({
           ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700/50 hover:bg-blue-200 dark:hover:bg-blue-900/40'
           : 'bg-amber-100 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700/50 hover:bg-amber-200 dark:hover:bg-amber-900/40'
       }`}
-      style={style}
+      style={{ ...style, ...dragStyle }}
       onMouseDown={onDragStart}
       onMouseUp={onDragEnd}
     >

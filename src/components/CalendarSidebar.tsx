@@ -1,9 +1,8 @@
-// components/CalendarSidebar.tsx
 import React from 'react';
 import { format, isSameDay } from 'date-fns';
 import { Calendar, Plus } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
-import { useDrag } from 'react-dnd';
+import { useDraggable } from '@dnd-kit/core';
 
 interface CalendarSidebarProps {
   currentDate: Date;
@@ -119,24 +118,20 @@ export default function CalendarSidebar({
 }
 
 function DraggableCalendarEvent({ event, isToday }: { event: any; isToday: boolean }) {
-  const [, drag] = useDrag(() => ({
-    type: 'calendar-event',
-    item: {
-      id: event.id,
-      title: event.title,
-      start: new Date(event.start),
-      end: new Date(event.end),
-      sourceType: 'calendar',
-      description: event.description,
-      location: event.location,
-      guests: event.guests,
-      meetLink: event.meetLink,
-    },
-  }));
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    id: event.id,
+  });
+
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+  } : undefined;
 
   return (
     <div
-      ref={drag}
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
       className={`p-3 rounded-lg shadow-sm cursor-move transition-all duration-200 hover:shadow-md ${
         isToday 
           ? 'bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700/50' 
@@ -159,23 +154,20 @@ function DraggableCalendarEvent({ event, isToday }: { event: any; isToday: boole
 }
 
 function DraggableUnscheduledTodo({ todo }: { todo: any }) {
-  const [, drag] = useDrag(() => ({
-    type: 'todo-item',
-    item: {
-      id: todo.id,
-      title: todo.title,
-      description: todo.description,
-      sourceType: 'todo',
-      duration: todo.duration || 60,
-      priority: todo.priority,
-      projectId: todo.projectId,
-      completed: todo.completed,
-    },
-  }));
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    id: todo.id,
+  });
+
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+  } : undefined;
 
   return (
     <div
-      ref={drag}
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
       className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-lg shadow-sm cursor-move transition-all duration-200 hover:shadow-md hover:bg-amber-100 dark:hover:bg-amber-900/30"
     >
       <h4 className="font-medium text-sm text-gray-900 dark:text-white truncate">
