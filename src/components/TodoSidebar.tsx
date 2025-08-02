@@ -58,12 +58,18 @@ export default function TodoSidebar({ onQuickAdd }: TodoSidebarProps) {
 }
 
 function DraggableTodo({ todo }: { todo: any }) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: todo.id,
+    data: {
+      type: 'todo',
+      sourceType: 'todo',
+      ...todo,
+    },
   });
 
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+    zIndex: isDragging ? 1000 : 'auto',
   } : undefined;
 
   return (
@@ -73,6 +79,8 @@ function DraggableTodo({ todo }: { todo: any }) {
       {...listeners}
       {...attributes}
       className={`p-3 rounded-lg shadow-sm cursor-move hover:shadow-md transition-all duration-200 border ${
+        isDragging ? 'opacity-50 scale-95' : ''
+      } ${
         todo.priority === 'high' 
           ? 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-700/50' 
           : todo.priority === 'medium'
