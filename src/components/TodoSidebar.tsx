@@ -1,3 +1,4 @@
+// components/TodoSidebar.tsx - Enhanced with proper drag data
 import React from 'react';
 import { ClipboardList, Plus } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
