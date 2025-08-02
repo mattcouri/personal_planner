@@ -98,28 +98,28 @@ const initialState: AppState = {
   ],
   passwords: [
     {
-      id: 'pwd1',
-      name: 'Work Email',
-      username: 'john.doe@company.com',
-      password: 'WorkSecure2024!',
-      url: 'https://gmail.com',
-      notes: 'Company email account'
+      id: 'pwd001',
+      name: 'Netflix Account',
+      username: 'user.netflix@email.com',
+      password: 'Stream2024!',
+      url: 'https://netflix.com',
+      notes: 'Family streaming account'
     },
     {
-      id: 'pwd2',
-      name: 'Banking',
-      username: 'johndoe123',
-      password: 'Bank$ecure789',
-      url: 'https://mybank.com',
-      notes: 'Main checking account'
+      id: 'pwd002',
+      name: 'GitHub Repository',
+      username: 'developer_pro',
+      password: 'Code#Secure456',
+      url: 'https://github.com',
+      notes: 'Development projects repository'
     },
     {
-      id: 'pwd3',
-      name: 'Social Media',
-      username: 'john_doe_2024',
-      password: 'Social@Pass456',
-      url: 'https://twitter.com',
-      notes: 'Professional social media account'
+      id: 'pwd003',
+      name: 'Cloud Storage',
+      username: 'cloud.user.2024',
+      password: 'Storage&Safe789',
+      url: 'https://drive.google.com',
+      notes: 'Personal file backup service'
     }
   ],
   habits: [],
@@ -130,63 +130,63 @@ const initialState: AppState = {
     notScheduled: { icon: '−', label: 'Not Scheduled', color: '#6B7280' },
   },
   financialAccounts: [
-    { id: 'acc1', name: 'Main Checking', type: 'checking', balance: 3250.75 },
-    { id: 'acc2', name: 'Emergency Savings', type: 'savings', balance: 12500.00 },
-    { id: 'acc3', name: 'Investment Account', type: 'investment', balance: 8750.25 }
+    { id: 'acc001', name: 'Primary Checking', type: 'checking', balance: 4850.32 },
+    { id: 'acc002', name: 'High Yield Savings', type: 'savings', balance: 18750.00 },
+    { id: 'acc003', name: 'Retirement 401k', type: 'investment', balance: 45200.85 }
   ],
   financialTransactions: [
     {
-      id: 'txn1',
-      description: 'Monthly Salary',
-      amount: 4200,
-      type: 'income',
-      category: 'Salary',
-      date: new Date(2024, 11, 1),
-      accountId: 'acc1'
-    },
-    {
-      id: 'txn2',
-      description: 'Weekly Groceries',
-      amount: 125.50,
-      type: 'expense',
-      category: 'Food',
-      date: new Date(2024, 11, 15),
-      accountId: 'acc1'
-    },
-    {
-      id: 'txn3',
-      description: 'Freelance Project',
-      amount: 800,
+      id: 'txn001',
+      description: 'Freelance Web Design',
+      amount: 2800,
       type: 'income',
       category: 'Freelance',
-      date: new Date(2024, 11, 10),
-      accountId: 'acc1'
+      date: new Date(2024, 11, 5),
+      accountId: 'acc001'
+    },
+    {
+      id: 'txn002',
+      description: 'Monthly Rent Payment',
+      amount: 1450.00,
+      type: 'expense',
+      category: 'Housing',
+      date: new Date(2024, 11, 1),
+      accountId: 'acc001'
+    },
+    {
+      id: 'txn003',
+      description: 'Investment Dividend',
+      amount: 340.75,
+      type: 'income',
+      category: 'Investment',
+      date: new Date(2024, 11, 12),
+      accountId: 'acc003'
     }
   ],
   financialGoals: [
     {
-      id: 'goal1',
-      name: 'Emergency Fund',
-      targetAmount: 15000,
-      currentAmount: 5200,
-      deadline: new Date(2025, 11, 31),
-      weeklyContribution: 150
+      id: 'goal001',
+      name: 'Home Down Payment',
+      targetAmount: 50000,
+      currentAmount: 12500,
+      deadline: new Date(2026, 5, 30),
+      weeklyContribution: 400
     },
     {
-      id: 'goal2',
-      name: 'Vacation Fund',
-      targetAmount: 5000,
-      currentAmount: 1800,
-      deadline: new Date(2025, 5, 30),
-      weeklyContribution: 100
+      id: 'goal002',
+      name: 'European Trip',
+      targetAmount: 8000,
+      currentAmount: 2400,
+      deadline: new Date(2025, 7, 15),
+      weeklyContribution: 125
     },
     {
-      id: 'goal3',
-      name: 'New Laptop',
-      targetAmount: 2500,
-      currentAmount: 750,
-      deadline: new Date(2025, 2, 15),
-      weeklyContribution: 75
+      id: 'goal003',
+      name: 'Professional Camera',
+      targetAmount: 3500,
+      currentAmount: 950,
+      deadline: new Date(2025, 3, 20),
+      weeklyContribution: 85
     }
   ],
   healthScores: []
@@ -309,42 +309,43 @@ export function DataProvider({ children }: { children: ReactNode }) {
       dispatch({
         type: 'ADD_EVENT',
         payload: {
-          id: 'event1',
-          title: 'Weekly Team Meeting',
-          description: 'Review project progress and plan next steps',
+          id: 'event001',
+          title: 'Client Strategy Session',
+          description: 'Quarterly business review and planning',
           start: now,
           end: oneHourLater,
-          color: '#3B82F6',
-          location: 'Conference Room A',
-          guests: ['sarah@company.com', 'mike@company.com'],
-          meetLink: 'https://meet.google.com/abc-defg-hij',
+          color: '#10B981',
+          location: 'Executive Boardroom',
+          guests: ['client@company.com', 'manager@company.com'],
+          meetLink: 'https://meet.google.com/xyz-abcd-efg',
         },
       });
 
       dispatch({
         type: 'ADD_EVENT',
         payload: {
-          id: 'event2',
-          title: 'Client Presentation',
-          description: 'Present Q4 results to key stakeholders',
+          id: 'event002',
+          title: 'Product Demo Workshop',
+          description: 'Showcase new features to development team',
           start: new Date(now.getTime() + 2 * 60 * 60 * 1000),
           end: new Date(now.getTime() + 3 * 60 * 60 * 1000),
-          color: '#10B981',
-          location: 'Main Office',
-          guests: ['client@company.com'],
+          color: '#F59E0B',
+          location: 'Innovation Lab',
+          guests: ['dev.team@company.com'],
         },
       });
 
       dispatch({
         type: 'ADD_EVENT',
         payload: {
-          id: 'event3',
-          title: 'Lunch Break',
-          description: 'Team lunch at the new restaurant',
+          id: 'event003',
+          title: 'Design Review Meeting',
+          description: 'Review UI/UX mockups for mobile app',
           start: new Date(now.getTime() + 4 * 60 * 60 * 1000),
           end: new Date(now.getTime() + 5 * 60 * 60 * 1000),
-          color: '#F59E0B',
-          location: 'Downtown Restaurant',
+          color: '#8B5CF6',
+          location: 'Design Studio',
+          guests: ['design@company.com', 'product@company.com'],
         },
       });
 
@@ -352,15 +353,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
       dispatch({
         type: 'ADD_TODO',
         payload: {
-          id: 'todo1',
-          title: 'Review quarterly reports',
-          description: 'Analyze Q4 performance metrics and prepare summary',
+          id: 'todo001',
+          title: 'Complete API documentation',
+          description: 'Write comprehensive docs for new REST endpoints',
           completed: false,
           priority: 'high',
           projectId: 'work',
           dueDate: now,
           createdAt: new Date(),
-          duration: 180,
+          duration: 240,
           position: 0,
         },
       });
@@ -368,15 +369,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
       dispatch({
         type: 'ADD_TODO',
         payload: {
-          id: 'todo2',
-          title: 'Team standup meeting',
-          description: 'Daily sync with development team',
+          id: 'todo002',
+          title: 'Database optimization',
+          description: 'Improve query performance for user dashboard',
           completed: false,
-          priority: 'medium',
+          priority: 'high',
           projectId: 'work',
           dueDate: new Date(now.getTime() + 24 * 60 * 60 * 1000),
           createdAt: new Date(),
-          duration: 90,
+          duration: 180,
           position: 1,
         },
       });
@@ -384,62 +385,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
       dispatch({
         type: 'ADD_TODO',
         payload: {
-          id: 'todo3',
-          title: 'Update project timeline',
-          description: 'Revise milestones based on recent changes',
+          id: 'todo003',
+          title: 'Security audit review',
+          description: 'Address vulnerabilities found in latest scan',
           completed: false,
           priority: 'medium',
           projectId: 'work',
           dueDate: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000),
           createdAt: new Date(),
-          duration: 60,
-          position: 2,
-        },
-      });
-
-      dispatch({
-        type: 'ADD_TODO',
-        payload: {
-          id: 'todo4',
-          title: 'Grocery shopping',
-          description: 'Buy ingredients for weekly meal prep',
-          completed: false,
-          priority: 'medium',
-          projectId: 'personal',
-          dueDate: now,
-          createdAt: new Date(),
-          duration: 45,
-          position: 0,
-        },
-      });
-
-      dispatch({
-        type: 'ADD_TODO',
-        payload: {
-          id: 'todo5',
-          title: 'Call mom',
-          description: 'Weekly check-in call with family',
-          completed: false,
-          priority: 'high',
-          projectId: 'personal',
-          dueDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
-          createdAt: new Date(),
-          duration: 30,
-          position: 1,
-        },
-      });
-
-      dispatch({
-        type: 'ADD_TODO',
-        payload: {
-          id: 'todo6',
-          title: 'Organize home office',
-          description: 'Declutter and reorganize workspace',
-          completed: false,
-          priority: 'low',
-          projectId: 'personal',
-          dueDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
-          createdAt: new Date(),
           duration: 120,
           position: 2,
         },
@@ -448,15 +401,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
       dispatch({
         type: 'ADD_TODO',
         payload: {
-          id: 'todo7',
-          title: 'Morning workout',
-          description: '45-minute cardio and strength training',
+          id: 'todo004',
+          title: 'Plan weekend hiking trip',
+          description: 'Research trails and book camping reservations',
           completed: false,
-          priority: 'high',
-          projectId: 'health',
+          priority: 'medium',
+          projectId: 'personal',
           dueDate: now,
           createdAt: new Date(),
-          duration: 45,
+          duration: 60,
           position: 0,
         },
       });
@@ -464,14 +417,110 @@ export function DataProvider({ children }: { children: ReactNode }) {
       dispatch({
         type: 'ADD_TODO',
         payload: {
-          id: 'todo8',
-          title: 'Meal prep Sunday',
-          description: 'Prepare healthy meals for the week',
+          id: 'todo005',
+          title: 'Organize photo collection',
+          description: 'Sort and backup vacation photos from last year',
+          completed: false,
+          priority: 'low',
+          projectId: 'personal',
+          dueDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 90,
+          position: 1,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo006',
+          title: 'Update personal website',
+          description: 'Add recent projects and refresh portfolio',
+          completed: false,
+          priority: 'medium',
+          projectId: 'personal',
+          dueDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 150,
+          position: 2,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo007',
+          title: 'Join yoga classes',
+          description: 'Research local studios and sign up for beginner course',
+          completed: false,
+          priority: 'high',
+          projectId: 'health',
+          dueDate: now,
+          createdAt: new Date(),
+          duration: 30,
+          position: 0,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo008',
+          title: 'Schedule annual checkup',
+          description: 'Book appointments with doctor and dentist',
           completed: false,
           priority: 'medium',
           projectId: 'health',
           dueDate: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000),
           createdAt: new Date(),
+          duration: 20,
+          position: 1,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo009',
+          title: 'Start meditation practice',
+          description: 'Download app and commit to 10 minutes daily',
+          completed: false,
+          priority: 'low',
+          projectId: 'health',
+          dueDate: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 15,
+          position: 2,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo010',
+          title: 'Set up automatic savings',
+          description: 'Configure monthly transfer to emergency fund',
+          completed: false,
+          priority: 'high',
+          projectId: 'finance',
+          dueDate: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 45,
+          position: 0,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo011',
+          title: 'Research investment options',
+          description: 'Compare index funds vs individual stocks',
+          completed: false,
+          priority: 'medium',
+          projectId: 'finance',
+          dueDate: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
           duration: 90,
           position: 1,
         },
@@ -480,61 +529,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
       dispatch({
         type: 'ADD_TODO',
         payload: {
-          id: 'todo9',
-          title: 'Review investment portfolio',
-          description: 'Check performance and rebalance if needed',
+          id: 'todo012',
+          title: 'Update budget spreadsheet',
+          description: 'Track expenses and adjust monthly budget',
           completed: false,
-          priority: 'medium',
+          priority: 'low',
           projectId: 'finance',
-          dueDate: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000),
+          dueDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
           createdAt: new Date(),
           duration: 60,
-          position: 0,
+          position: 2,
         },
       });
 
       dispatch({
         type: 'ADD_TODO',
         payload: {
-          id: 'todo10',
-          title: 'Complete React course',
-          description: 'Finish advanced React patterns module',
+          id: 'todo013',
+          title: 'Learn TypeScript fundamentals',
+          description: 'Complete online course on advanced TypeScript',
           completed: false,
           priority: 'high',
           projectId: 'learning',
-          dueDate: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000),
-          createdAt: new Date(),
-          duration: 120,
-          position: 0,
-        },
-      });
-
-      dispatch({
-        type: 'ADD_TODO',
-        payload: {
-          id: 'todo11',
-          title: 'Fix kitchen faucet',
-          description: 'Replace the leaky kitchen faucet',
-          completed: false,
-          priority: 'high',
-          projectId: 'home',
-          dueDate: new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000),
-          createdAt: new Date(),
-          duration: 90,
-          position: 0,
-        },
-      });
-
-      dispatch({
-        type: 'ADD_TODO',
-        payload: {
-          id: 'todo12',
-          title: 'Design new logo',
-          description: 'Create logo concepts for client project',
-          completed: false,
-          priority: 'medium',
-          projectId: 'creative',
-          dueDate: new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000),
+          dueDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
           createdAt: new Date(),
           duration: 180,
           position: 0,
@@ -544,16 +561,176 @@ export function DataProvider({ children }: { children: ReactNode }) {
       dispatch({
         type: 'ADD_TODO',
         payload: {
-          id: 'todo13',
-          title: 'Book flight to Paris',
-          description: 'Find and book flights for summer vacation',
+          id: 'todo014',
+          title: 'Read design patterns book',
+          description: 'Study software architecture best practices',
+          completed: false,
+          priority: 'medium',
+          projectId: 'learning',
+          dueDate: new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 45,
+          position: 1,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo015',
+          title: 'Practice algorithm problems',
+          description: 'Solve 5 coding challenges on LeetCode',
+          completed: false,
+          priority: 'low',
+          projectId: 'learning',
+          dueDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 120,
+          position: 2,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo016',
+          title: 'Install smart thermostat',
+          description: 'Replace old thermostat with programmable model',
+          completed: false,
+          priority: 'medium',
+          projectId: 'home',
+          dueDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 120,
+          position: 0,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo017',
+          title: 'Deep clean garage',
+          description: 'Organize tools and donate unused items',
+          completed: false,
+          priority: 'low',
+          projectId: 'home',
+          dueDate: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 240,
+          position: 1,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo018',
+          title: 'Plan garden renovation',
+          description: 'Design layout and order plants for spring',
+          completed: false,
+          priority: 'high',
+          projectId: 'home',
+          dueDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 90,
+          position: 2,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo019',
+          title: 'Create digital art series',
+          description: 'Design 5 illustrations for portfolio',
+          completed: false,
+          priority: 'high',
+          projectId: 'creative',
+          dueDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 300,
+          position: 0,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo020',
+          title: 'Write short story',
+          description: 'Complete first draft of science fiction story',
+          completed: false,
+          priority: 'medium',
+          projectId: 'creative',
+          dueDate: new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 180,
+          position: 1,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo021',
+          title: 'Learn guitar basics',
+          description: 'Practice chords and simple songs',
+          completed: false,
+          priority: 'low',
+          projectId: 'creative',
+          dueDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 60,
+          position: 2,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo022',
+          title: 'Research Japan itinerary',
+          description: 'Plan 2-week trip including hotels and activities',
+          completed: false,
+          priority: 'medium',
+          projectId: 'travel',
+          dueDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 120,
+          position: 0,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo023',
+          title: 'Apply for travel visa',
+          description: 'Submit documents for international travel',
+          completed: false,
+          priority: 'high',
+          projectId: 'travel',
+          dueDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 90,
+          position: 1,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo024',
+          title: 'Book travel insurance',
+          description: 'Compare policies and purchase coverage',
           completed: false,
           priority: 'low',
           projectId: 'travel',
-          dueDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
+          dueDate: new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000),
           createdAt: new Date(),
           duration: 45,
-          position: 0,
+          position: 2,
         },
       });
 
@@ -564,17 +741,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
           date: dateKey,
           items: [
             {
-              id: 'plan1',
-              title: 'Weekly Team Meeting',
-              description: 'Review project progress and plan next steps',
+              id: 'plan001',
+              title: 'Client Strategy Session',
+              description: 'Quarterly business review and planning',
               type: 'event',
               start: now,
               end: oneHourLater,
-              originalId: 'event1',
+              originalId: 'event001',
               completed: false,
-              location: 'Conference Room A',
-              guests: ['sarah@company.com', 'mike@company.com'],
-              meetLink: 'https://meet.google.com/abc-defg-hij',
+              location: 'Executive Boardroom',
+              guests: ['client@company.com', 'manager@company.com'],
+              meetLink: 'https://meet.google.com/xyz-abcd-efg',
             },
           ],
         },
