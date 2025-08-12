@@ -1140,6 +1140,9 @@ export default function Habits() {
   );
 }
 
+export default Habits;
+}
+
 // Goal Modal Component
 function GoalModal({ 
   goal, 
