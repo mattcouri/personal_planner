@@ -26,8 +26,8 @@ export default function Layout({ children }: LayoutProps) {
     { to: '/calendar', icon: CalendarDays, label: 'Calendar' },
     { to: '/todos', icon: CheckSquare, label: 'To-Do Lists' },
     { to: '/habits', icon: Target, label: 'Goals & Habits' },
-    { to: '/financial', icon: Wallet, label: 'Financial' },
     { to: '/health', icon: Heart, label: 'Health Tracker' },
+    { to: '/financial', icon: Wallet, label: 'Financial' },
     { to: '/passwords', icon: Shield, label: 'Passwords' },
   ];
 
