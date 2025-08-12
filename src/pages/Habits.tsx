@@ -28,6 +28,24 @@ interface Habit {
   icon: string;
 }
 
+// KPI Configuration Constants
+const KPI_CONFIG = {
+  S_STAR: 14,
+  R_STAR: 3,
+  TAU: 0.5,
+  EPSILON: 0.01,
+  WEIGHTS: {
+    completion: 0.25,
+    streak: 0.15,
+    adherence: 0.10,
+    onTime: 0.10,
+    recovery: 0.10,
+    trend: 0.10,
+    consistency: 0.10,
+    resilience: 0.10
+  }
+};
+
 export default function Habits() {
   const { state, dispatch } = useData();
   const TODAY = new Date(); // Define TODAY at component level
@@ -571,6 +589,7 @@ export default function Habits() {
     };
   };
 
+  const setQuickDateRange = (type: string) => {
     const today = TODAY; // Use the TODAY constant defined at component level
     let start = new Date();
     let end = new Date();
@@ -1138,9 +1157,6 @@ export default function Habits() {
       )}
     </div>
   );
-}
-
-export default Habits;
 }
 
 // Goal Modal Component
