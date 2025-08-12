@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { Target, Plus, Calendar, Edit3, Trash2, ChevronDown, ChevronRight, Settings } from 'lucide-react';
+import { Target, Plus, Calendar, Edit3, Trash2, ChevronDown, ChevronRight, Settings, ArrowUp, ArrowDown, TrendingUp, TrendingDown, BarChart3, Activity } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
-import { format, getDaysInMonth, startOfMonth, getDay } from 'date-fns';
+import { format, getDaysInMonth, startOfMonth, getDay, addDays, differenceInDays, eachDayOfInterval, startOfDay, endOfDay } from 'date-fns';
 
 interface Goal {
   id: string;
   name: string;
   description?: string;
   color: string;
+  position: number;
   habits: Habit[];
 }
 
@@ -29,7 +30,10 @@ interface Habit {
 
 export default function Habits() {
   const { state, dispatch } = useData();
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [dateRange, setDateRange] = useState({
+    start: format(new Date(), 'yyyy-MM-01'),
+    end: format(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0), 'yyyy-MM-dd')
+  });
   const [expandedGoals, setExpandedGoals] = useState<Set<string>>(new Set());
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showHabitModal, setShowHabitModal] = useState(false);
@@ -41,6 +45,7 @@ export default function Habits() {
       name: 'Physical Health',
       description: 'Maintain and improve physical fitness',
       color: '#10B981',
+      position: 1,
       habits: [
         {
           id: 'running',
@@ -70,6 +75,7 @@ export default function Habits() {
       name: 'Mental Wellness',
       description: 'Mental health and mindfulness practices',
       color: '#3B82F6',
+      position: 2,
       habits: [
         {
           id: 'meditation',
@@ -92,6 +98,7 @@ export default function Habits() {
       name: 'Productivity',
       description: 'Work and personal productivity habits',
       color: '#F59E0B',
+      position: 3,
       habits: [
         {
           id: 'reading',
@@ -102,11 +109,12 @@ export default function Habits() {
         }
       ]
     }
-  ]);
+  ].sort((a, b) => a.position - b.position));
 
-  const monthStart = startOfMonth(currentMonth);
-  const daysInMonth = getDaysInMonth(currentMonth);
-  const monthKey = format(currentMonth, 'yyyy-MM');
+  // Calculate date range
+  const startDate = new Date(dateRange.start);
+  const endDate = new Date(dateRange.end);
+  const daysInRange = eachDayOfInterval({ start: startDate, end: endDate });
 
   const toggleGoalExpansion = (goalId: string) => {
     const newExpanded = new Set(expandedGoals);
@@ -118,14 +126,14 @@ export default function Habits() {
     setExpandedGoals(newExpanded);
   };
 
-  const getHabitStatus = (goalId: string, habitId: string, day: number) => {
-    const dateKey = format(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day), 'yyyy-MM-dd');
+  const getHabitStatus = (goalId: string, habitId: string, date: Date) => {
+    const dateKey = format(date, 'yyyy-MM-dd');
     const habitEntry = state.habits.find(h => h.id === `${goalId}-${habitId}-${dateKey}`);
     return habitEntry?.status || 'notScheduled';
   };
 
-  const updateHabitStatus = (goalId: string, habitId: string, day: number, status: string) => {
-    const dateKey = format(new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day), 'yyyy-MM-dd');
+  const updateHabitStatus = (goalId: string, habitId: string, date: Date, status: string) => {
+    const dateKey = format(date, 'yyyy-MM-dd');
     const habitEntry = {
       id: `${goalId}-${habitId}-${dateKey}`,
       name: `${goalId}-${habitId}`,
@@ -136,9 +144,8 @@ export default function Habits() {
     dispatch({ type: 'SET_HABIT', payload: habitEntry });
   };
 
-  const isHabitScheduledForDay = (habit: Habit, day: number) => {
-    const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-    const dayOfWeek = getDay(date); // 0 = Sunday, 1 = Monday, etc.
+  const isHabitScheduledForDay = (habit: Habit, date: Date) => {
+    const dayOfWeek = getDay(date);
     const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     return habit.frequency[dayNames[dayOfWeek] as keyof typeof habit.frequency];
   };
@@ -151,10 +158,58 @@ export default function Habits() {
     return state.habitLegend[status]?.color || '#6B7280';
   };
 
-  const addGoal = (goal: Omit<Goal, 'id'>) => {
+  const setQuickDateRange = (type: string) => {
+    const today = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    switch (type) {
+      case '1d':
+        start = end = today;
+        break;
+      case '1w':
+        start = new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000);
+        end = today;
+        break;
+      case '1m':
+        start = new Date(today.getFullYear(), today.getMonth(), 1);
+        end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        break;
+      case '3m':
+        start = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+        end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        break;
+    }
+
+    setDateRange({
+      start: format(start, 'yyyy-MM-dd'),
+      end: format(end, 'yyyy-MM-dd')
+    });
+  };
+
+  const moveGoal = (goalId: string, direction: 'up' | 'down') => {
+    const sortedGoals = [...goals].sort((a, b) => a.position - b.position);
+    const currentIndex = sortedGoals.findIndex(g => g.id === goalId);
+    
+    if ((direction === 'up' && currentIndex > 0) || (direction === 'down' && currentIndex < sortedGoals.length - 1)) {
+      const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+      const updatedGoals = [...sortedGoals];
+      
+      // Swap positions
+      const temp = updatedGoals[currentIndex].position;
+      updatedGoals[currentIndex].position = updatedGoals[newIndex].position;
+      updatedGoals[newIndex].position = temp;
+      
+      setGoals(updatedGoals);
+    }
+  };
+
+  const addGoal = (goal: Omit<Goal, 'id' | 'position'>) => {
+    const maxPosition = Math.max(...goals.map(g => g.position), 0);
     const newGoal: Goal = {
       ...goal,
       id: `goal-${Date.now()}`,
+      position: maxPosition + 1,
     };
     setGoals([...goals, newGoal]);
   };
@@ -199,6 +254,71 @@ export default function Habits() {
     }
   };
 
+  // Calculate metrics
+  const calculateHabitMetrics = (goalId: string, habitId: string) => {
+    const completedDays = daysInRange.filter(date => {
+      const status = getHabitStatus(goalId, habitId, date);
+      return status === 'completed';
+    }).length;
+    
+    const scheduledDays = daysInRange.filter(date => {
+      const goal = goals.find(g => g.id === goalId);
+      const habit = goal?.habits.find(h => h.id === habitId);
+      return habit ? isHabitScheduledForDay(habit, date) : false;
+    }).length;
+
+    const completionRate = scheduledDays > 0 ? Math.round((completedDays / scheduledDays) * 100) : 0;
+    
+    return { completedDays, scheduledDays, completionRate };
+  };
+
+  const calculateGoalMetrics = (goalId: string) => {
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return { totalHabits: 0, avgCompletion: 0, streak: 0, totalCompleted: 0 };
+
+    const habitMetrics = goal.habits.map(habit => calculateHabitMetrics(goalId, habit.id));
+    const avgCompletion = habitMetrics.length > 0 
+      ? Math.round(habitMetrics.reduce((sum, m) => sum + m.completionRate, 0) / habitMetrics.length)
+      : 0;
+    
+    const totalCompleted = habitMetrics.reduce((sum, m) => sum + m.completedDays, 0);
+    
+    // Calculate current streak (simplified)
+    let streak = 0;
+    for (let i = daysInRange.length - 1; i >= 0; i--) {
+      const date = daysInRange[i];
+      const dayHasCompletion = goal.habits.some(habit => {
+        if (!isHabitScheduledForDay(habit, date)) return false;
+        return getHabitStatus(goalId, habit.id, date) === 'completed';
+      });
+      
+      if (dayHasCompletion) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    return {
+      totalHabits: goal.habits.length,
+      avgCompletion,
+      streak,
+      totalCompleted
+    };
+  };
+
+  // Calculate dashboard metrics
+  const dashboardMetrics = {
+    totalGoals: goals.length,
+    totalHabits: goals.reduce((sum, g) => sum + g.habits.length, 0),
+    overallCompletion: goals.length > 0 
+      ? Math.round(goals.reduce((sum, g) => sum + calculateGoalMetrics(g.id).avgCompletion, 0) / goals.length)
+      : 0,
+    activeStreak: Math.max(...goals.map(g => calculateGoalMetrics(g.id).streak), 0)
+  };
+
+  const sortedGoals = [...goals].sort((a, b) => a.position - b.position);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -210,199 +330,318 @@ export default function Habits() {
           </h1>
         </div>
 
-        <div className="flex space-x-3">
-          <button 
-            onClick={() => setShowGoalModal(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg hover:from-primary-600 hover:to-accent-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Goal</span>
-          </button>
+        <button 
+          onClick={() => setShowGoalModal(true)}
+          className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg hover:from-primary-600 hover:to-accent-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Add Goal</span>
+        </button>
+      </div>
+
+      {/* Dashboard Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4 border border-blue-200 dark:border-blue-700/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Total Goals</p>
+              <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">{dashboardMetrics.totalGoals}</p>
+            </div>
+            <Target className="w-8 h-8 text-blue-500" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4 border border-green-200 dark:border-green-700/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-green-600 dark:text-green-400">Total Habits</p>
+              <p className="text-2xl font-bold text-green-900 dark:text-green-100">{dashboardMetrics.totalHabits}</p>
+            </div>
+            <Activity className="w-8 h-8 text-green-500" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-4 border border-purple-200 dark:border-purple-700/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Completion Rate</p>
+              <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">{dashboardMetrics.overallCompletion}%</p>
+            </div>
+            <BarChart3 className="w-8 h-8 text-purple-500" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-xl p-4 border border-orange-200 dark:border-orange-700/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-orange-600 dark:text-orange-400">Current Streak</p>
+              <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">{dashboardMetrics.activeStreak} days</p>
+            </div>
+            <TrendingUp className="w-8 h-8 text-orange-500" />
+          </div>
         </div>
       </div>
 
-      {/* Month Navigation */}
+      {/* Date Range Picker */}
       <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-4">
-        <div className="flex items-center justify-center space-x-4">
-          <button
-            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
-            className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200"
-          >
-            ←
-          </button>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {format(currentMonth, 'MMMM yyyy')}
-          </h2>
-          <button
-            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
-            className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200"
-          >
-            →
-          </button>
+        <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0 md:space-x-4">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">From:</label>
+              <input
+                type="date"
+                value={dateRange.start}
+                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">To:</label>
+              <input
+                type="date"
+                value={dateRange.end}
+                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                className="px-3 py-1 border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="flex space-x-2">
+            {[
+              { key: '1d', label: '1D' },
+              { key: '1w', label: '1W' },
+              { key: '1m', label: '1M' },
+              { key: '3m', label: '3M' },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setQuickDateRange(key)}
+                className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Goals List */}
-      <div className="space-y-4">
-        {goals.map(goal => (
-          <div key={goal.id} className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
-            {/* Goal Header */}
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <button
-                    onClick={() => toggleGoalExpansion(goal.id)}
-                    className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
-                  >
-                    {expandedGoals.has(goal.id) ? (
-                      <ChevronDown className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                    ) : (
-                      <ChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                    )}
-                  </button>
-                  <div
-                    className="w-4 h-4 rounded-full"
-                    style={{ backgroundColor: goal.color }}
-                  />
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {goal.name}
-                    </h3>
-                    {goal.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-300">
-                        {goal.description}
-                      </p>
-                    )}
+      {/* Goals Card */}
+      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Goals & Habit Tracking ({format(startDate, 'MMM d')} - {format(endDate, 'MMM d, yyyy')})
+          </h3>
+        </div>
+
+        <div className="divide-y divide-gray-200 dark:divide-gray-700">
+          {sortedGoals.map(goal => {
+            const goalMetrics = calculateGoalMetrics(goal.id);
+            
+            return (
+              <div key={goal.id} className="p-4">
+                {/* Goal Header */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={() => toggleGoalExpansion(goal.id)}
+                      className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+                    >
+                      {expandedGoals.has(goal.id) ? (
+                        <ChevronDown className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                      ) : (
+                        <ChevronRight className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                      )}
+                    </button>
+                    <div
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: goal.color }}
+                    />
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        {goal.name}
+                      </h4>
+                      {goal.description && (
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          {goal.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-4">
+                    {/* Goal Metrics */}
+                    <div className="flex space-x-4 text-sm">
+                      <div className="text-center">
+                        <div className="font-bold text-gray-900 dark:text-white">{goalMetrics.totalHabits}</div>
+                        <div className="text-gray-500 dark:text-gray-400">Habits</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="font-bold text-green-600">{goalMetrics.avgCompletion}%</div>
+                        <div className="text-gray-500 dark:text-gray-400">Avg</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="font-bold text-orange-600">{goalMetrics.streak}</div>
+                        <div className="text-gray-500 dark:text-gray-400">Streak</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="font-bold text-blue-600">{goalMetrics.totalCompleted}</div>
+                        <div className="text-gray-500 dark:text-gray-400">Done</div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center space-x-1">
+                      <button
+                        onClick={() => moveGoal(goal.id, 'up')}
+                        className="p-1 text-gray-400 hover:text-blue-500 transition-colors duration-200"
+                        title="Move up"
+                      >
+                        <ArrowUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => moveGoal(goal.id, 'down')}
+                        className="p-1 text-gray-400 hover:text-blue-500 transition-colors duration-200"
+                        title="Move down"
+                      >
+                        <ArrowDown className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setEditingHabit({ goalId: goal.id })}
+                        className="p-1 text-gray-400 hover:text-green-500 transition-colors duration-200"
+                        title="Add habit"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingGoal(goal);
+                          setShowGoalModal(true);
+                        }}
+                        className="p-1 text-gray-400 hover:text-blue-500 transition-colors duration-200"
+                        title="Edit goal"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => deleteGoal(goal.id)}
+                        className="p-1 text-gray-400 hover:text-red-500 transition-colors duration-200"
+                        title="Delete goal"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <span className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-2 py-1 rounded-full text-sm font-medium">
-                    {goal.habits.length} habits
-                  </span>
-                  <button
-                    onClick={() => setEditingHabit({ goalId: goal.id })}
-                    className="p-2 text-gray-400 hover:text-green-500 transition-colors duration-200"
-                    title="Add habit"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      setEditingGoal(goal);
-                      setShowGoalModal(true);
-                    }}
-                    className="p-2 text-gray-400 hover:text-blue-500 transition-colors duration-200"
-                    title="Edit goal"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => deleteGoal(goal.id)}
-                    className="p-2 text-gray-400 hover:text-red-500 transition-colors duration-200"
-                    title="Delete goal"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Habit Tracker */}
-            {expandedGoals.has(goal.id) && (
-              <div className="p-4">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-gray-200 dark:border-gray-700">
-                        <th className="text-left py-2 px-1 font-medium text-gray-700 dark:text-gray-300 w-32">
-                          Habit
-                        </th>
-                        {Array.from({ length: daysInMonth }, (_, i) => {
-                          const day = i + 1;
-                          const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-                          return (
-                            <th key={day} className="text-center py-2 px-1 font-medium text-gray-500 dark:text-gray-400 min-w-[28px]">
+                {/* Habit Tracker */}
+                {expandedGoals.has(goal.id) && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-gray-200 dark:border-gray-700">
+                          <th className="text-left py-1 px-1 font-medium text-gray-700 dark:text-gray-300 w-32">
+                            Habit
+                          </th>
+                          {daysInRange.map((date, i) => (
+                            <th key={i} className="text-center py-1 px-0.5 font-medium text-gray-500 dark:text-gray-400 min-w-[24px]">
                               <div className="text-xs">{format(date, 'EEE')}</div>
-                              <div className="text-sm font-bold">{day}</div>
+                              <div className="text-sm font-bold">{format(date, 'd')}</div>
                             </th>
+                          ))}
+                          <th className="text-center py-1 px-1 font-medium text-gray-700 dark:text-gray-300 w-16">
+                            Rate
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {goal.habits.map(habit => {
+                          const habitMetrics = calculateHabitMetrics(goal.id, habit.id);
+                          
+                          return (
+                            <tr key={habit.id} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                              <td className="py-1 px-1">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-base">{habit.icon}</span>
+                                  <div>
+                                    <div className="font-medium text-gray-900 dark:text-white text-sm">
+                                      {habit.name}
+                                    </div>
+                                    {habit.description && (
+                                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                                        {habit.description}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex space-x-1">
+                                    <button
+                                      onClick={() => setEditingHabit({ goalId: goal.id, habit })}
+                                      className="p-0.5 text-gray-400 hover:text-blue-500 transition-colors duration-200"
+                                      title="Edit habit"
+                                    >
+                                      <Edit3 className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => deleteHabitFromGoal(goal.id, habit.id)}
+                                      className="p-0.5 text-gray-400 hover:text-red-500 transition-colors duration-200"
+                                      title="Delete habit"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </td>
+                              {daysInRange.map((date, i) => {
+                                const isScheduled = isHabitScheduledForDay(habit, date);
+                                const status = getHabitStatus(goal.id, habit.id, date);
+                                const icon = getStatusIcon(status);
+                                const color = getStatusColor(status);
+                                
+                                return (
+                                  <td key={i} className="text-center py-1 px-0.5">
+                                    <button
+                                      onClick={() => {
+                                        if (isScheduled && status !== 'notScheduled') {
+                                          // Cycle through scheduled statuses or set to not scheduled
+                                          const statusKeys = ['completed', 'partial', 'missed', 'notScheduled'];
+                                          const currentIndex = statusKeys.indexOf(status);
+                                          const nextIndex = (currentIndex + 1) % statusKeys.length;
+                                          updateHabitStatus(goal.id, habit.id, date, statusKeys[nextIndex]);
+                                        } else {
+                                          // Cycle through all statuses for unscheduled days or not scheduled
+                                          const statusKeys = Object.keys(state.habitLegend);
+                                          const currentIndex = statusKeys.indexOf(status);
+                                          const nextIndex = (currentIndex + 1) % statusKeys.length;
+                                          updateHabitStatus(goal.id, habit.id, date, statusKeys[nextIndex]);
+                                        }
+                                      }}
+                                      className="w-5 h-5 rounded border border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 flex items-center justify-center text-xs font-medium"
+                                      style={{ 
+                                        color, 
+                                        backgroundColor: isScheduled || status !== 'notScheduled' ? `${color}20` : 'transparent',
+                                        borderStyle: isScheduled ? 'solid' : 'dotted'
+                                      }}
+                                    >
+                                      {isScheduled || status !== 'notScheduled' ? icon : '·'}
+                                    </button>
+                                  </td>
+                                );
+                              })}
+                              <td className="text-center py-1 px-1">
+                                <div className="text-sm font-bold" style={{ color: habitMetrics.completionRate >= 80 ? '#10B981' : habitMetrics.completionRate >= 60 ? '#F59E0B' : '#EF4444' }}>
+                                  {habitMetrics.completionRate}%
+                                </div>
+                              </td>
+                            </tr>
                           );
                         })}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {goal.habits.map(habit => (
-                        <tr key={habit.id} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                          <td className="py-2 px-1">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-lg">{habit.icon}</span>
-                              <div>
-                                <div className="font-medium text-gray-900 dark:text-white text-sm">
-                                  {habit.name}
-                                </div>
-                                {habit.description && (
-                                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                                    {habit.description}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex space-x-1">
-                                <button
-                                  onClick={() => setEditingHabit({ goalId: goal.id, habit })}
-                                  className="p-1 text-gray-400 hover:text-blue-500 transition-colors duration-200"
-                                  title="Edit habit"
-                                >
-                                  <Edit3 className="w-3 h-3" />
-                                </button>
-                                <button
-                                  onClick={() => deleteHabitFromGoal(goal.id, habit.id)}
-                                  className="p-1 text-gray-400 hover:text-red-500 transition-colors duration-200"
-                                  title="Delete habit"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                            </div>
-                          </td>
-                          {Array.from({ length: daysInMonth }, (_, i) => {
-                            const day = i + 1;
-                            const isScheduled = isHabitScheduledForDay(habit, day);
-                            const status = getHabitStatus(goal.id, habit.id, day);
-                            const icon = getStatusIcon(status);
-                            const color = getStatusColor(status);
-                            
-                            return (
-                              <td key={day} className="text-center py-2 px-1">
-                                {isScheduled ? (
-                                  <button
-                                    onClick={() => {
-                                      const statusKeys = Object.keys(state.habitLegend);
-                                      const currentIndex = statusKeys.indexOf(status);
-                                      const nextIndex = (currentIndex + 1) % statusKeys.length;
-                                      updateHabitStatus(goal.id, habit.id, day, statusKeys[nextIndex]);
-                                    }}
-                                    className="w-6 h-6 rounded border border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 flex items-center justify-center text-xs font-medium"
-                                    style={{ color, backgroundColor: `${color}20` }}
-                                  >
-                                    {icon}
-                                  </button>
-                                ) : (
-                                  <div className="w-6 h-6 flex items-center justify-center">
-                                    <div className="w-2 h-2 bg-gray-200 dark:bg-gray-600 rounded-full"></div>
-                                  </div>
-                                )}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        ))}
+            );
+          })}
+        </div>
       </div>
 
       {/* Legend */}
@@ -410,11 +649,11 @@ export default function Habits() {
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
           Legend
         </h3>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
           {Object.entries(state.habitLegend).map(([key, legend]) => (
             <div key={key} className="flex items-center space-x-3">
               <div
-                className="w-6 h-6 rounded border border-gray-300 dark:border-gray-600 flex items-center justify-center text-xs font-medium"
+                className="w-5 h-5 rounded border border-gray-300 dark:border-gray-600 flex items-center justify-center text-xs font-medium"
                 style={{ color: legend.color, backgroundColor: `${legend.color}20` }}
               >
                 {legend.icon}
@@ -425,11 +664,11 @@ export default function Habits() {
             </div>
           ))}
           <div className="flex items-center space-x-3">
-            <div className="w-6 h-6 flex items-center justify-center">
-              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+            <div className="w-5 h-5 flex items-center justify-center border border-gray-400 border-dotted rounded">
+              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
             </div>
             <span className="text-sm text-gray-700 dark:text-gray-300">
-              Not Scheduled
+              Unscheduled
             </span>
           </div>
         </div>
@@ -482,13 +721,14 @@ function GoalModal({
   onClose 
 }: { 
   goal: Goal | null; 
-  onSave: (goal: Omit<Goal, 'id'> | Goal) => void; 
+  onSave: (goal: Omit<Goal, 'id' | 'position'> | Goal) => void; 
   onClose: () => void; 
 }) {
   const [formData, setFormData] = useState({
     name: goal?.name || '',
     description: goal?.description || '',
     color: goal?.color || '#10B981',
+    position: goal?.position || 1,
   });
 
   const colors = [
@@ -539,6 +779,20 @@ function GoalModal({
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               placeholder="Brief description of this goal"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Position
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={formData.position}
+              onChange={(e) => setFormData({ ...formData, position: parseInt(e.target.value) || 1 })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="Goal order position"
             />
           </div>
 
