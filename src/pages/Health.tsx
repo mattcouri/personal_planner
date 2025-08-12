@@ -406,14 +406,14 @@ export default function Health() {
               </div>
               
               {notes && (
-            {notes && (
-              <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  {notes}
-                </p>
-              </div>
-            )}
-          </div>
+                <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <p className="text-sm text-gray-600 dark:text-gray-300">
+                    {notes}
+                  </p>
+                </div>
+              )}
+            </div>
+          );
         })}
       </div>
 
