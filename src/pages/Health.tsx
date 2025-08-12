@@ -616,28 +616,20 @@ export default function Health() {
   );
 }
 
-// Health Dimension Management Modal
-function HealthDimensionModal({
+// Add Health Dimension Modal
+function AddHealthDimensionModal({
   dimension,
   onSave,
-  onDelete,
   onClose,
-  existingDimensions,
-  onEdit
 }: {
   dimension: HealthDimension | null;
   onSave: (dimension: Omit<HealthDimension, 'id' | 'position'> | HealthDimension, createGoal: boolean) => void;
-  onDelete: (dimensionId: string) => void;
   onClose: () => void;
-  existingDimensions: HealthDimension[];
-  onEdit: (dimension: HealthDimension) => void;
 }) {
   const [formData, setFormData] = useState({
-    key: dimension?.key || '',
     label: dimension?.label || '',
     description: dimension?.description || '',
     color: dimension?.color || '#8B5CF6',
-    linkedGoalId: dimension?.linkedGoalId || '',
     position: dimension?.position || 1,
   });
   const [createGoal, setCreateGoal] = useState(false);
@@ -650,9 +642,16 @@ function HealthDimensionModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (dimension) {
-      onSave({ ...dimension, ...formData }, false);
+      onSave({ 
+        ...dimension, 
+        ...formData,
+        key: formData.label.toLowerCase().replace(/\s+/g, '-')
+      }, false);
     } else {
-      onSave(formData, createGoal);
+      onSave({
+        ...formData,
+        key: formData.label.toLowerCase().replace(/\s+/g, '-')
+      }, createGoal);
     }
   };
 
@@ -661,268 +660,240 @@ function HealthDimensionModal({
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {dimension ? 'Edit Health Dimension' : 'Manage Health Dimensions'}
+            {dimension ? 'Edit Health Dimension' : 'Add Health Dimension'}
           </h3>
         </div>
 
-        <div className="p-6">
-          {!dimension ? (
-            <div className="space-y-6">
-              {/* Existing Dimensions List */}
+
+
+
+
+
+
+
+
+
+
+
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Display Label
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.label}
+              onChange={(e) => setFormData({ ...formData, label: e.target.value })}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description
+            </label>
+            <textarea
+              rows={3}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="Brief description of this health dimension"
+            />
+          </div>
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Color
+            </label>
+            <div className="grid grid-cols-5 gap-2">
+              {colors.map(color => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, color })}
+                  className={`w-10 h-10 rounded-full border-2 transition-all duration-200 ${
+                    formData.color === color ? 'border-gray-900 dark:border-white scale-110' : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+          </div>
+              placeholder="e.g., Emotional Health"
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Position on Page
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={formData.position}
+              onChange={(e) => setFormData({ ...formData, position: parseInt(e.target.value) || 1 })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="Display order (1, 2, 3...)"
+            />
+          </div>
+            />
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700/50">
+            <div className="flex items-start space-x-3">
+              <input
+                type="checkbox"
+                id="createGoal"
+                checked={createGoal}
+                onChange={(e) => setCreateGoal(e.target.checked)}
+                className="mt-1 w-5 h-5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
               <div>
-                <h4 className="text-md font-medium text-gray-900 dark:text-white mb-4">
-                  Existing Health Dimensions
-                </h4>
-                <div className="space-y-3">
-                  {existingDimensions.map(dim => (
-                    <div key={dim.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className="w-4 h-4 rounded-full"
-                          style={{ backgroundColor: dim.color }}
-                        />
-                        <div>
-                          <h5 className="font-medium text-gray-900 dark:text-white">
-                            {dim.label}
-                          </h5>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {dim.description}
-                          </p>
-                        </div>
-                        {dim.linkedGoalId && (
-                          <div className="text-green-500" title="Linked to goal">
-                            <Target className="w-4 h-4" />
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => onEdit(dim)}
-                          className="p-2 text-gray-400 hover:text-blue-500 transition-colors duration-200"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => onDelete(dim.id)}
-                          className="p-2 text-gray-400 hover:text-red-500 transition-colors duration-200"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Add New Dimension Form */}
-              <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-                <h4 className="text-md font-medium text-gray-900 dark:text-white mb-4">
-                  Add New Health Dimension
-                </h4>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Key (Internal Name)
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.key}
-                        onChange={(e) => setFormData({ ...formData, key: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        placeholder="e.g., emotional"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Display Label
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.label}
-                        onChange={(e) => setFormData({ ...formData, label: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        placeholder="e.g., Emotional"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Description
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      placeholder="Brief description of this health dimension"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Color
-                      </label>
-                      <div className="grid grid-cols-5 gap-2">
-                        {colors.map(color => (
-                          <button
-                            key={color}
-                            type="button"
-                            onClick={() => setFormData({ ...formData, color })}
-                            className={`w-8 h-8 rounded-full border-2 transition-all duration-200 ${
-                              formData.color === color ? 'border-gray-900 dark:border-white scale-110' : 'border-gray-300 dark:border-gray-600'
-                            }`}
-                            style={{ backgroundColor: color }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Position
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={formData.position}
-                        onChange={(e) => setFormData({ ...formData, position: parseInt(e.target.value) || 1 })}
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="createGoal"
-                      checked={createGoal}
-                      onChange={(e) => setCreateGoal(e.target.checked)}
-                      className="rounded border-gray-300 text-primary-600"
-                    />
-                    <label htmlFor="createGoal" className="text-sm text-gray-700 dark:text-gray-300">
-                      Automatically create a corresponding goal in Goals & Habits
-                    </label>
-                  </div>
-
-                  <div className="flex gap-2 pt-4">
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="flex-1 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                    >
-                      Close
-                    </button>
-                    <button
-                      type="submit"
-                      className="flex-1 py-2 rounded-lg bg-gradient-to-r from-primary-500 to-accent-500 text-white hover:from-primary-600 hover:to-accent-600"
-                    >
-                      Add Dimension
-                    </button>
-                  </div>
-                </form>
+                <label htmlFor="createGoal" className="text-sm font-medium text-blue-900 dark:text-blue-100 cursor-pointer">
+                  Automatically create a corresponding goal in Goals & Habits
+                </label>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                  This will create a goal with the same name that you can add habits to for tracking
+                </p>
               </div>
             </div>
-          ) : (
-            /* Edit Form */
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Key (Internal Name)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.key}
-                    onChange={(e) => setFormData({ ...formData, key: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          </div>
+          </div>
+          <div className="flex gap-2 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 py-2 rounded-lg bg-gradient-to-r from-primary-500 to-accent-500 text-white hover:from-primary-600 hover:to-accent-600"
+            >
+              {dimension ? 'Update' : 'Create'} Health Dimension
+            </button>
+          </div>
+// Management Modal Component
+function ManageHealthDimensionsModal({
+  dimensions,
+  onEdit,
+  onDelete,
+  onReorder,
+  onClose
+}: {
+  dimensions: HealthDimension[];
+  onEdit: (dimension: HealthDimension) => void;
+  onDelete: (dimensionId: string) => void;
+  onReorder: (dimensions: HealthDimension[]) => void;
+  onClose: () => void;
+}) {
+  const [localDimensions, setLocalDimensions] = useState([...dimensions].sort((a, b) => a.position - b.position));
+        </form>
+  const moveUp = (index: number) => {
+    if (index > 0) {
+      const newDimensions = [...localDimensions];
+      const temp = newDimensions[index].position;
+      newDimensions[index].position = newDimensions[index - 1].position;
+      newDimensions[index - 1].position = temp;
+      
+      const reordered = newDimensions.sort((a, b) => a.position - b.position);
+      setLocalDimensions(reordered);
+      onReorder(reordered);
+    }
+  };
+      </div>
+  const moveDown = (index: number) => {
+    if (index < localDimensions.length - 1) {
+      const newDimensions = [...localDimensions];
+      const temp = newDimensions[index].position;
+      newDimensions[index].position = newDimensions[index + 1].position;
+      newDimensions[index + 1].position = temp;
+      
+      const reordered = newDimensions.sort((a, b) => a.position - b.position);
+      setLocalDimensions(reordered);
+      onReorder(reordered);
+    }
+  };
+    </div>
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Manage Health Dimensions
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            Edit, delete, or reorder existing health dimensions
+          </p>
+        </div>
+  );
+        <div className="p-6">
+          <div className="space-y-3">
+            {localDimensions.map((dimension, index) => (
+              <div key={dimension.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+                <div className="flex items-center space-x-3">
+                  <div
+                    className="w-4 h-4 rounded-full"
+                    style={{ backgroundColor: dimension.color }}
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Display Label
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.label}
-                    onChange={(e) => setFormData({ ...formData, label: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Description
-                </label>
-                <textarea
-                  rows={2}
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Color
-                  </label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {colors.map(color => (
-                      <button
-                        key={color}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, color })}
-                        className={`w-8 h-8 rounded-full border-2 transition-all duration-200 ${
-                          formData.color === color ? 'border-gray-900 dark:border-white scale-110' : 'border-gray-300 dark:border-gray-600'
-                        }`}
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
+                  <div>
+                    <h5 className="font-medium text-gray-900 dark:text-white">
+                      {dimension.label}
+                    </h5>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {dimension.description}
+                    </p>
                   </div>
+                  {dimension.linkedGoalId && (
+                    <div className="text-green-500" title="Linked to goal">
+                      <Target className="w-4 h-4" />
+                    </div>
+                  )}
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Position
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={formData.position}
-                    onChange={(e) => setFormData({ ...formData, position: parseInt(e.target.value) || 1 })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  />
+                
+                <div className="flex items-center space-x-1">
+                  <button
+                    onClick={() => moveUp(index)}
+                    disabled={index === 0}
+                    className="p-1 text-gray-400 hover:text-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                    title="Move up"
+                  >
+                    <ArrowUp className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => moveDown(index)}
+                    disabled={index === localDimensions.length - 1}
+                    className="p-1 text-gray-400 hover:text-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                    title="Move down"
+                  >
+                    <ArrowDown className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => onEdit(dimension)}
+                    className="p-1 text-gray-400 hover:text-blue-500 transition-colors duration-200"
+                    title="Edit"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Are you sure you want to delete "${dimension.label}"?`)) {
+                        onDelete(dimension.id);
+                        setLocalDimensions(localDimensions.filter(d => d.id !== dimension.id));
+                      }
+                    }}
+                    className="p-1 text-gray-400 hover:text-red-500 transition-colors duration-200"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-
-              <div className="flex gap-2 pt-4">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2 rounded-lg bg-gradient-to-r from-primary-500 to-accent-500 text-white hover:from-primary-600 hover:to-accent-600"
-                >
-                  Update Dimension
-                </button>
-              </div>
-            </form>
-          )}
+            ))}
+          </div>
+        </div>
+}
+        <div className="p-6 border-t border-gray-200 dark:border-gray-700">
+          <button
+            onClick={onClose}
+            className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>

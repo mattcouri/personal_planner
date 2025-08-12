@@ -41,71 +41,298 @@ export default function Habits() {
   const [editingHabit, setEditingHabit] = useState<{ goalId: string; habit?: Habit } | null>(null);
   const [goals, setGoals] = useState<Goal[]>([
     {
-      id: 'physical-health',
-      name: 'Physical Health',
-      description: 'Maintain and improve physical fitness',
-      color: '#10B981',
+      id: 'spiritual',
+      name: 'Spiritual',
+      description: 'You with your God/Universe',
+      color: '#8B5CF6',
       position: 1,
       habits: [
         {
-          id: 'running',
-          name: 'Running',
-          description: '30 min cardio',
-          frequency: { monday: true, tuesday: false, wednesday: true, thursday: false, friday: true, saturday: false, sunday: false },
-          icon: '🏃'
-        },
-        {
-          id: 'weights',
-          name: 'Weight Training',
-          description: 'Strength training',
-          frequency: { monday: false, tuesday: true, wednesday: false, thursday: true, friday: false, saturday: true, sunday: false },
-          icon: '🏋️'
-        },
-        {
-          id: 'swimming',
-          name: 'Swimming',
-          description: '45 min swim',
+          id: 'prayer',
+          name: 'Prayer/Meditation',
+          description: '20 min spiritual practice',
           frequency: { monday: true, tuesday: true, wednesday: true, thursday: true, friday: true, saturday: true, sunday: true },
-          icon: '🏊'
+          icon: '🙏'
+        },
+        {
+          id: 'scripture',
+          name: 'Scripture Reading',
+          description: '15 min daily reading',
+          frequency: { monday: true, tuesday: true, wednesday: true, thursday: true, friday: true, saturday: false, sunday: true },
+          icon: '📖'
+        },
+        {
+          id: 'gratitude',
+          name: 'Gratitude Practice',
+          description: 'List 3 things grateful for',
+          frequency: { monday: true, tuesday: false, wednesday: true, thursday: false, friday: true, saturday: false, sunday: true },
+          icon: '🙏'
+        },
+        {
+          id: 'service',
+          name: 'Acts of Service',
+          description: 'Help others in need',
+          frequency: { monday: false, tuesday: false, wednesday: true, thursday: false, friday: false, saturday: true, sunday: true },
+          icon: '🤝'
+        },
+        {
+          id: 'reflection',
+          name: 'Spiritual Reflection',
+          description: 'Journal spiritual insights',
+          frequency: { monday: false, tuesday: true, wednesday: false, thursday: true, friday: false, saturday: false, sunday: true },
+          icon: '✨'
         }
       ]
     },
     {
-      id: 'mental-wellness',
-      name: 'Mental Wellness',
-      description: 'Mental health and mindfulness practices',
+      id: 'mental',
+      name: 'Mental',
+      description: 'You with your mind',
       color: '#3B82F6',
       position: 2,
       habits: [
         {
           id: 'meditation',
-          name: 'Meditation',
-          description: '15 min mindfulness',
+          name: 'Mindfulness Meditation',
+          description: '15 min daily meditation',
           frequency: { monday: true, tuesday: true, wednesday: true, thursday: true, friday: true, saturday: true, sunday: true },
           icon: '🧘'
         },
         {
-          id: 'journaling',
-          name: 'Journaling',
-          description: 'Daily reflection',
-          frequency: { monday: true, tuesday: false, wednesday: true, thursday: false, friday: true, saturday: false, sunday: true },
-          icon: '📝'
+          id: 'learning',
+          name: 'Learning New Skills',
+          description: '30 min skill development',
+          frequency: { monday: true, tuesday: true, wednesday: true, thursday: true, friday: true, saturday: false, sunday: false },
+          icon: '📚'
+        },
+        {
+          id: 'puzzles',
+          name: 'Brain Training',
+          description: 'Puzzles or brain games',
+          frequency: { monday: false, tuesday: true, wednesday: false, thursday: true, friday: false, saturday: true, sunday: false },
+          icon: '🧩'
+        },
+        {
+          id: 'creativity',
+          name: 'Creative Expression',
+          description: 'Art, music, or writing',
+          frequency: { monday: false, tuesday: false, wednesday: true, thursday: false, friday: true, saturday: true, sunday: true },
+          icon: '🎨'
+        },
+        {
+          id: 'digital-detox',
+          name: 'Digital Detox',
+          description: '1 hour without screens',
+          frequency: { monday: true, tuesday: false, wednesday: true, thursday: false, friday: true, saturday: true, sunday: true },
+          icon: '📵'
         }
       ]
     },
     {
-      id: 'productivity',
-      name: 'Productivity',
-      description: 'Work and personal productivity habits',
-      color: '#F59E0B',
+      id: 'social',
+      name: 'Social',
+      description: 'You with other people',
+      color: '#10B981',
       position: 3,
       habits: [
         {
-          id: 'reading',
-          name: 'Reading',
-          description: '30 min daily reading',
+          id: 'family-time',
+          name: 'Quality Family Time',
+          description: 'Meaningful time with family',
+          frequency: { monday: false, tuesday: true, wednesday: false, thursday: true, friday: false, saturday: true, sunday: true },
+          icon: '👨‍👩‍👧‍👦'
+        },
+        {
+          id: 'friends',
+          name: 'Connect with Friends',
+          description: 'Call or meet with friends',
+          frequency: { monday: false, tuesday: false, wednesday: true, thursday: false, friday: true, saturday: true, sunday: false },
+          icon: '👥'
+        },
+        {
+          id: 'networking',
+          name: 'Professional Networking',
+          description: 'Build professional relationships',
+          frequency: { monday: true, tuesday: false, wednesday: true, thursday: false, friday: true, saturday: false, sunday: false },
+          icon: '🤝'
+        },
+        {
+          id: 'community',
+          name: 'Community Involvement',
+          description: 'Participate in community events',
+          frequency: { monday: false, tuesday: false, wednesday: false, thursday: false, friday: false, saturday: true, sunday: true },
+          icon: '🏘️'
+        },
+        {
+          id: 'social-media',
+          name: 'Positive Social Media',
+          description: 'Meaningful online interactions',
+          frequency: { monday: true, tuesday: true, wednesday: false, thursday: true, friday: true, saturday: false, sunday: false },
+          icon: '💬'
+        }
+      ]
+    },
+    {
+      id: 'physical',
+      name: 'Physical',
+      description: 'You with your body',
+      color: '#F59E0B',
+      position: 4,
+      habits: [
+        {
+          id: 'cardio',
+          name: 'Cardiovascular Exercise',
+          description: '30 min cardio workout',
+          frequency: { monday: true, tuesday: false, wednesday: true, thursday: false, friday: true, saturday: false, sunday: false },
+          icon: '🏃'
+        },
+        {
+          id: 'strength',
+          name: 'Strength Training',
+          description: 'Weight lifting or resistance',
+          frequency: { monday: false, tuesday: true, wednesday: false, thursday: true, friday: false, saturday: true, sunday: false },
+          icon: '🏋️'
+        },
+        {
+          id: 'flexibility',
+          name: 'Flexibility & Stretching',
+          description: 'Yoga or stretching routine',
+          frequency: { monday: true, tuesday: true, wednesday: true, thursday: true, friday: true, saturday: true, sunday: true },
+          icon: '🧘‍♀️'
+        },
+        {
+          id: 'nutrition',
+          name: 'Healthy Nutrition',
+          description: 'Track meals and water intake',
+          frequency: { monday: true, tuesday: true, wednesday: true, thursday: true, friday: true, saturday: true, sunday: true },
+          icon: '🥗'
+        },
+        {
+          id: 'sleep',
+          name: 'Quality Sleep',
+          description: '7-8 hours of sleep',
+          frequency: { monday: true, tuesday: true, wednesday: true, thursday: true, friday: true, saturday: true, sunday: true },
+          icon: '😴'
+        }
+      ]
+    },
+    {
+      id: 'financial',
+      name: 'Financial',
+      description: 'You with your resources',
+      color: '#EF4444',
+      position: 5,
+      habits: [
+        {
+          id: 'budget-review',
+          name: 'Budget Review',
+          description: 'Review daily expenses',
           frequency: { monday: true, tuesday: true, wednesday: true, thursday: true, friday: true, saturday: false, sunday: false },
-          icon: '📚'
+          icon: '💰'
+        },
+        {
+          id: 'savings',
+          name: 'Savings Contribution',
+          description: 'Add to savings account',
+          frequency: { monday: true, tuesday: false, wednesday: false, thursday: false, friday: true, saturday: false, sunday: false },
+          icon: '🏦'
+        },
+        {
+          id: 'investment',
+          name: 'Investment Research',
+          description: 'Research investment opportunities',
+          frequency: { monday: false, tuesday: false, wednesday: true, thursday: false, friday: false, saturday: true, sunday: false },
+          icon: '📈'
+        },
+        {
+          id: 'financial-education',
+          name: 'Financial Education',
+          description: 'Read financial content',
+          frequency: { monday: false, tuesday: true, wednesday: false, thursday: true, friday: false, saturday: false, sunday: true },
+          icon: '📖'
+        },
+        {
+          id: 'expense-tracking',
+          name: 'Expense Tracking',
+          description: 'Log all daily expenses',
+          frequency: { monday: true, tuesday: true, wednesday: true, thursday: true, friday: true, saturday: true, sunday: true },
+          icon: '📊'
+        }
+      ]
+    },
+    {
+      id: 'career-development',
+      name: 'Career Development',
+      description: 'Professional growth and skill building',
+      color: '#6366F1',
+      position: 6,
+      habits: [
+        {
+          id: 'skill-learning',
+          name: 'Skill Development',
+          description: 'Learn new professional skills',
+          frequency: { monday: true, tuesday: true, wednesday: true, thursday: true, friday: true, saturday: false, sunday: false },
+          icon: '💻'
+        },
+        {
+          id: 'industry-news',
+          name: 'Industry Research',
+          description: 'Stay updated with industry trends',
+          frequency: { monday: true, tuesday: false, wednesday: true, thursday: false, friday: true, saturday: false, sunday: false },
+          icon: '📰'
+        },
+        {
+          id: 'portfolio-work',
+          name: 'Portfolio Building',
+          description: 'Work on personal projects',
+          frequency: { monday: false, tuesday: true, wednesday: false, thursday: true, friday: false, saturday: true, sunday: true },
+          icon: '🎯'
+        }
+      ]
+    },
+    {
+      id: 'personal-growth',
+      name: 'Personal Growth',
+      description: 'Self-improvement and personal development',
+      color: '#EC4899',
+      position: 7,
+      habits: [
+        {
+          id: 'self-reflection',
+          name: 'Self Reflection',
+          description: 'Journal about personal growth',
+          frequency: { monday: false, tuesday: false, wednesday: false, thursday: false, friday: false, saturday: false, sunday: true },
+          icon: '📝'
+        },
+        {
+          id: 'goal-review',
+          name: 'Goal Review',
+          description: 'Review and adjust personal goals',
+          frequency: { monday: true, tuesday: false, wednesday: false, thursday: false, friday: false, saturday: false, sunday: false },
+          icon: '🎯'
+        }
+      ]
+    },
+    {
+      id: 'hobbies-recreation',
+      name: 'Hobbies & Recreation',
+      description: 'Fun activities and personal interests',
+      color: '#84CC16',
+      position: 8,
+      habits: [
+        {
+          id: 'hobby-time',
+          name: 'Hobby Practice',
+          description: 'Engage in favorite hobbies',
+          frequency: { monday: false, tuesday: false, wednesday: false, thursday: false, friday: false, saturday: true, sunday: true },
+          icon: '🎨'
+        },
+        {
+          id: 'outdoor-activity',
+          name: 'Outdoor Activities',
+          description: 'Spend time in nature',
+          frequency: { monday: false, tuesday: false, wednesday: false, thursday: false, friday: false, saturday: true, sunday: true },
+          icon: '🌲'
         }
       ]
     }
