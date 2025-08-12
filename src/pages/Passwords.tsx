@@ -85,12 +85,10 @@ export default function Passwords() {
       <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50">
         {/* Table Header */}
         <div className="px-6 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 rounded-t-xl">
-          <div className="grid grid-cols-14 gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+          <div className="grid grid-cols-12 gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
             <div className="col-span-3">Account Name</div>
-            <div className="col-span-2">Username</div>
-            <div className="col-span-3">Password</div>
-            <div className="col-span-1">Actions</div>
-            <div className="col-span-3">Info</div>
+            <div className="col-span-3">Username</div>
+            <div className="col-span-4">Password</div>
             <div className="col-span-2">Actions</div>
           </div>
         </div>
@@ -293,19 +291,6 @@ function AddPasswordModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Description
-            </label>
-            <textarea
-              rows={2}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              placeholder="Brief description of this account..."
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Username/Email *
             </label>
             <input
@@ -356,14 +341,14 @@ function AddPasswordModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Info
+              Notes
             </label>
-            <input
-              type="text"
-              value={formData.info}
-              onChange={(e) => setFormData({ ...formData, info: e.target.value })}
+            <textarea
+              rows={3}
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              placeholder="Additional info, security questions, etc."
+              placeholder="Additional notes or security questions..."
             />
           </div>
 
