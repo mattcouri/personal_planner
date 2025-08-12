@@ -30,6 +30,7 @@ interface Habit {
 
 export default function Habits() {
   const { state, dispatch } = useData();
+  const TODAY = new Date(); // Define TODAY at component level
   const [dateRange, setDateRange] = useState({
     start: format(new Date(), 'yyyy-MM-01'),
     end: format(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0), 'yyyy-MM-dd')
@@ -570,8 +571,7 @@ export default function Habits() {
     };
   };
 
-  const setQuickDateRange = (type: string) => {
-    const today = new Date();
+    const today = TODAY; // Use the TODAY constant defined at component level
     let start = new Date();
     let end = new Date();
 
