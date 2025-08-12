@@ -356,17 +356,18 @@ export default function Health() {
           const notes = currentScore?.notes?.[dimension.key] || '';
           
           return (
-            <div key={dimension.id} className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6">
+            <div 
+              key={dimension.id} 
+              onClick={() => window.location.href = `/health/${dimension.id}`}
+              className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6 cursor-pointer hover:shadow-2xl hover:scale-105 transition-all duration-200"
+            >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
                   <div
                     className="w-4 h-4 rounded-full"
                     style={{ backgroundColor: dimension.color }}
                   />
-                  <h3 
-                    className="text-lg font-semibold text-gray-900 dark:text-white cursor-pointer hover:text-primary-600 dark:hover:text-primary-400 transition-colors duration-200"
-                    onClick={() => window.location.href = `/health/${dimension.id}`}
-                  >
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                     {dimension.label}
                   </h3>
                 </div>
@@ -412,6 +413,7 @@ export default function Health() {
                 </div>
               )}
             </div>
+          </div>
           );
         })}
       </div>

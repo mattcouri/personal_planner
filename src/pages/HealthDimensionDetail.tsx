@@ -255,65 +255,65 @@ export default function HealthDimensionDetail() {
       key: 'completionRate',
       label: 'Completion Rate',
       icon: Target,
-      description: 'Measures how many scheduled (planned) habit instances were actually completed.',
+      description: 'Percentage of scheduled habit instances actually completed.',
       formula: 'CR = (Σ y_d) / P\nCR_100 = 100 * CR',
-      color: '#10B981'
+      color: '#059669'
     },
     {
       key: 'streakLength',
       label: 'Streak Length',
       icon: Zap,
-      description: 'Tracks the longest run of consecutive planned days where the habit was completed. Rewards consistent streaks.',
+      description: 'Longest run of consecutive planned days with completed habit.',
       formula: 'S_max = min(S*, P)\nSL_100 = 100 * min(SL / S_max, 1)',
-      color: '#F59E0B'
+      color: '#D97706'
     },
     {
       key: 'adherenceVariance',
       label: 'Adherence Variance',
       icon: Activity,
-      description: 'Measures stability of execution; high variance means irregular performance. Lower variance = higher score.',
+      description: 'Stability of execution. Lower variance = higher score.',
       formula: 'AV_100 = 100 * (1 - min(Var(y_d) / 0.25, 1))',
-      color: '#8B5CF6'
+      color: '#7C3AED'
     },
     {
       key: 'onTimeRate',
       label: 'On-Time Rate',
       icon: Clock,
-      description: 'Percent of completed habits done at the planned or target time.',
+      description: 'Percentage of completed habits done at planned time.',
       formula: 'OT = (Σ t_d) / max(1, Σ y_d)\nOT_100 = 100 * OT',
-      color: '#3B82F6'
+      color: '#2563EB'
     },
     {
       key: 'recoveryAfterMiss',
       label: 'Recovery After Miss',
       icon: TrendingUp,
-      description: 'Average number of days it takes to return to completion after a missed planned day. Faster recovery = higher score.',
+      description: 'Days to return to completion after missing. Faster = higher score.',
       formula: 'RC_100 = 100 * (1 - min(R / R*, 1))',
-      color: '#EF4444'
+      color: '#DC2626'
     },
     {
       key: 'trendDirection',
       label: 'Trend Direction',
       icon: BarChart3,
-      description: 'Shows improvement or decline over the period by comparing first half to second half completion rates.',
+      description: 'Improvement trend comparing first half to second half rates.',
       formula: 'Δ = CR_H2 - CR_H1\nTD_100 = 100 * clamp((Δ + 1) / 2, 0, 1)',
-      color: '#06B6D4'
+      color: '#0891B2'
     },
     {
       key: 'weightedConsistency',
       label: 'Weighted Consistency',
       icon: Award,
-      description: 'Balances overall completion and streak length so both contribute to the score.',
+      description: 'Balances completion rate and streak length performance.',
       formula: 'WC = 2 / (1/max(CR, ε) + 1/max(SL_100/100, ε))\nWC_100 = 100 * WC',
-      color: '#84CC16'
+      color: '#65A30D'
     },
     {
       key: 'resilience',
       label: 'Resilience',
       icon: Award,
-      description: 'Measures how well the user bounces back after a low-performing week ("setback week").',
+      description: 'Recovery performance after low-performing weeks.',
       formula: 'RS_100 = 100 * RS',
-      color: '#EC4899'
+      color: '#DB2777'
     }
   ];
 
@@ -428,27 +428,29 @@ export default function HealthDimensionDetail() {
           const score = rolledUpKPIs[kpi.key as keyof typeof rolledUpKPIs];
           
           return (
-            <div key={kpi.key} className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-4 relative group">
+            <div key={kpi.key} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-6 relative group hover:shadow-xl transition-shadow duration-200">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-2">
-                  <Icon className="w-5 h-5" style={{ color: kpi.color }} />
-                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                  <div className="p-2 rounded-lg" style={{ backgroundColor: `${kpi.color}20` }}>
+                    <Icon className="w-5 h-5" style={{ color: kpi.color }} />
+                  </div>
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">
                     {kpi.label}
                   </h3>
                 </div>
                 <button
                   onClick={() => setShowFormulaModal(kpi.key)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   <Info className="w-4 h-4 text-gray-400" />
                 </button>
               </div>
               
-              <div className="text-center">
-                <div className={`text-3xl font-bold mb-2 ${getScoreColor(score)}`}>
+              <div className="mb-4">
+                <div className="text-3xl font-bold mb-2" style={{ color: kpi.color }}>
                   {score}%
                 </div>
-                <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-2">
+                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
                   {kpi.description}
                 </p>
               </div>
@@ -458,10 +460,10 @@ export default function HealthDimensionDetail() {
       </div>
 
       {/* Habits Table */}
-      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Associated Habits & Individual KPIs
+            Individual Habits & KPI Performance
           </h3>
           <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
             Individual habit performance contributing to {currentDimension?.label} health score
@@ -483,6 +485,30 @@ export default function HealthDimensionDetail() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              {/* Rollup Row First */}
+              <tr className="bg-gradient-to-r from-primary-50 to-accent-50 dark:from-primary-900/20 dark:to-accent-900/20 font-semibold border-2 border-primary-200 dark:border-primary-700/50">
+                <td className="px-6 py-4 text-sm font-bold text-gray-900 dark:text-white">
+                  <div className="flex items-center space-x-3">
+                    <div
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: currentDimension?.color }}
+                    />
+                    <span>{currentDimension?.label} Overall Score</span>
+                  </div>
+                </td>
+                {kpiDefinitions.map(kpi => {
+                  const score = rolledUpKPIs[kpi.key as keyof typeof rolledUpKPIs];
+                  return (
+                    <td key={kpi.key} className="px-3 py-4 text-center">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${getScoreColor(score)}`}>
+                        {score}%
+                      </span>
+                    </td>
+                  );
+                })}
+              </tr>
+              
+              {/* Individual Habits */}
               {habitKPIs.map((habit, index) => (
                 <tr key={habit.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                   <td className="px-6 py-4">
@@ -513,23 +539,6 @@ export default function HealthDimensionDetail() {
                   })}
                 </tr>
               ))}
-              
-              {/* Rollup Row */}
-              <tr className="bg-gray-100 dark:bg-gray-700/30 font-semibold">
-                <td className="px-6 py-4 text-sm font-bold text-gray-900 dark:text-white">
-                  {currentDimension?.label} Rollup
-                </td>
-                {kpiDefinitions.map(kpi => {
-                  const score = rolledUpKPIs[kpi.key as keyof typeof rolledUpKPIs];
-                  return (
-                    <td key={kpi.key} className="px-3 py-4 text-center">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-bold ${getScoreColor(score)}`}>
-                        {score}%
-                      </span>
-                    </td>
-                  );
-                })}
-              </tr>
             </tbody>
           </table>
         </div>
