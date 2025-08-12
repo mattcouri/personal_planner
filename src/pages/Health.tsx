@@ -363,18 +363,14 @@ export default function Health() {
                     className="w-4 h-4 rounded-full"
                     style={{ backgroundColor: dimension.color }}
                   />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  <h3 
+                    className="text-lg font-semibold text-gray-900 dark:text-white cursor-pointer hover:text-primary-600 dark:hover:text-primary-400 transition-colors duration-200"
+                    onClick={() => window.location.href = `/health/${dimension.id}`}
+                  >
                     {dimension.label}
                   </h3>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <button
-                    onClick={() => setShowScoreModal(true)}
-                    className="p-1 text-gray-400 hover:text-primary-500 transition-colors duration-200"
-                    title="Update score"
-                  >
-                    <Edit3 className="w-4 h-4" />
-                  </button>
                   {dimension.linkedGoalId && (
                     <div className="p-1 text-green-500" title="Linked to goal">
                       <Target className="w-4 h-4" />
