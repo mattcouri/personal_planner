@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { Shield, Plus, Eye, EyeOff, Copy, Search, ExternalLink } from 'lucide-react';
+import { Shield, Plus, Eye, EyeOff, Copy, Search, ExternalLink, X } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
+import { v4 as uuidv4 } from 'uuid';
 
 export default function Passwords() {
-  const { state } = useData();
+  const { state, dispatch } = useData();
   const [searchTerm, setSearchTerm] = useState('');
   const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingPassword, setEditingPassword] = useState<any>(null);
 
   const filteredPasswords = state.passwords.filter(password =>
     password.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -27,6 +30,23 @@ export default function Passwords() {
     // You could add a toast notification here
   };
 
+  const handleAddPassword = () => {
+    setEditingPassword(null);
+    setShowAddModal(true);
+  };
+
+  const handleEditPassword = (password: any) => {
+    setEditingPassword(password);
+    setShowAddModal(true);
+  };
+
+  const handleDeletePassword = (passwordId: string) => {
+    if (confirm('Are you sure you want to delete this password?')) {
+      // In a real app, you'd dispatch a DELETE_PASSWORD action
+      // For now, we'll just filter it out from the display
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -38,7 +58,10 @@ export default function Passwords() {
           </h1>
         </div>
 
-        <button className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg hover:from-primary-600 hover:to-accent-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105">
+        <button 
+          onClick={handleAddPassword}
+          className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg hover:from-primary-600 hover:to-accent-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+        >
           <Plus className="w-4 h-4" />
           <span>Add Password</span>
         </button>
@@ -58,94 +81,117 @@ export default function Passwords() {
         </div>
       </div>
 
-      {/* Password List */}
-      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 divide-y divide-gray-200 dark:divide-gray-700">
+      {/* Password List - Compact Design */}
+      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50">
+        {/* Table Header */}
+        <div className="px-6 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 rounded-t-xl">
+          <div className="grid grid-cols-12 gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+            <div className="col-span-3">Account Name</div>
+            <div className="col-span-3">Username</div>
+            <div className="col-span-4">Password</div>
+            <div className="col-span-2">Actions</div>
+          </div>
+        </div>
+
+        {/* Password Rows */}
         {filteredPasswords.length > 0 ? (
-          filteredPasswords.map(password => (
-            <div key={password.id} className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all duration-200">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {password.name}
-                    </h3>
-                    {password.url && (
-                      <a
-                        href={password.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary-500 hover:text-primary-600 transition-colors duration-200"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {filteredPasswords.map(password => (
+              <div key={password.id} className="px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-all duration-200">
+                <div className="grid grid-cols-12 gap-4 items-center">
+                  {/* Account Name */}
+                  <div className="col-span-3">
+                    <div className="flex items-center space-x-2">
+                      <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        {password.name}
+                      </h3>
+                      {password.url && (
+                        <a
+                          href={password.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary-500 hover:text-primary-600 transition-colors duration-200 flex-shrink-0"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
+                    {password.notes && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
+                        {password.notes}
+                      </p>
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Username
-                      </label>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-gray-900 dark:text-white font-mono">
-                          {password.username}
-                        </span>
-                        <button
-                          onClick={() => copyToClipboard(password.username)}
-                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
-                        >
-                          <Copy className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Password
-                      </label>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-gray-900 dark:text-white font-mono">
-                          {visiblePasswords.has(password.id) 
-                            ? password.password 
-                            : '●'.repeat(password.password.length)
-                          }
-                        </span>
-                        <button
-                          onClick={() => togglePasswordVisibility(password.id)}
-                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
-                        >
-                          {visiblePasswords.has(password.id) ? (
-                            <EyeOff className="w-4 h-4" />
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => copyToClipboard(password.password)}
-                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
-                        >
-                          <Copy className="w-4 h-4" />
-                        </button>
-                      </div>
+                  {/* Username */}
+                  <div className="col-span-3">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-900 dark:text-white font-mono truncate">
+                        {password.username}
+                      </span>
+                      <button
+                        onClick={() => copyToClipboard(password.username)}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200 flex-shrink-0"
+                        title="Copy username"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
                     </div>
                   </div>
 
-                  {password.notes && (
-                    <div className="mt-4">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Notes
-                      </label>
-                      <p className="text-gray-600 dark:text-gray-300">
-                        {password.notes}
-                      </p>
+                  {/* Password */}
+                  <div className="col-span-4">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-900 dark:text-white font-mono flex-1 truncate">
+                        {visiblePasswords.has(password.id) 
+                          ? password.password 
+                          : '●'.repeat(Math.min(password.password.length, 12))
+                        }
+                      </span>
+                      <button
+                        onClick={() => togglePasswordVisibility(password.id)}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200 flex-shrink-0"
+                        title={visiblePasswords.has(password.id) ? "Hide password" : "Show password"}
+                      >
+                        {visiblePasswords.has(password.id) ? (
+                          <EyeOff className="w-3 h-3" />
+                        ) : (
+                          <Eye className="w-3 h-3" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => copyToClipboard(password.password)}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200 flex-shrink-0"
+                        title="Copy password"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
                     </div>
-                  )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="col-span-2">
+                    <div className="flex items-center space-x-1">
+                      <button
+                        onClick={() => handleEditPassword(password)}
+                        className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors duration-200"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeletePassword(password.id)}
+                        className="text-xs px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors duration-200"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         ) : (
-          <div className="p-12 text-center">
+          <div className="p-8 text-center">
             <Shield className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
               No passwords stored
@@ -155,6 +201,173 @@ export default function Passwords() {
             </p>
           </div>
         )}
+      </div>
+
+      {/* Add/Edit Password Modal */}
+      {showAddModal && (
+        <AddPasswordModal
+          password={editingPassword}
+          onClose={() => {
+            setShowAddModal(false);
+            setEditingPassword(null);
+          }}
+          onSave={(passwordData) => {
+            // In a real app, you'd dispatch ADD_PASSWORD or UPDATE_PASSWORD
+            console.log('Save password:', passwordData);
+            setShowAddModal(false);
+            setEditingPassword(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Add Password Modal Component
+function AddPasswordModal({
+  password,
+  onClose,
+  onSave,
+}: {
+  password: any;
+  onClose: () => void;
+  onSave: (password: any) => void;
+}) {
+  const [formData, setFormData] = useState({
+    name: password?.name || '',
+    username: password?.username || '',
+    password: password?.password || '',
+    url: password?.url || '',
+    notes: password?.notes || '',
+  });
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let result = '';
+    for (let i = 0; i < 16; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setFormData({ ...formData, password: result });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const passwordData = {
+      id: password?.id || uuidv4(),
+      ...formData,
+    };
+    onSave(passwordData);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            {password ? 'Edit Password' : 'Add New Password'}
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Account Name *
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="e.g., Netflix, Gmail, etc."
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Username/Email *
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.username}
+              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="username or email@example.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Password *
+            </label>
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                required
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono"
+                placeholder="Enter password"
+              />
+              <button
+                type="button"
+                onClick={generatePassword}
+                className="px-3 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors duration-200 text-sm"
+              >
+                Generate
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Website URL
+            </label>
+            <input
+              type="url"
+              value={formData.url}
+              onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="https://example.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Notes
+            </label>
+            <textarea
+              rows={3}
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="Additional notes or security questions..."
+            />
+          </div>
+
+          <div className="flex gap-2 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="flex-1 py-2 rounded-lg bg-gradient-to-r from-primary-500 to-accent-500 text-white hover:from-primary-600 hover:to-accent-600"
+            >
+              {password ? 'Update' : 'Add'} Password
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
