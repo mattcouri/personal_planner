@@ -25,10 +25,10 @@ export default function Layout({ children }: LayoutProps) {
     { to: '/', icon: BarChart3, label: 'Daily Plan' },
     { to: '/calendar', icon: CalendarDays, label: 'Calendar' },
     { to: '/todos', icon: CheckSquare, label: 'To-Do Lists' },
-    { to: '/passwords', icon: Shield, label: 'Passwords' },
     { to: '/habits', icon: Target, label: 'Goals & Habits' },
     { to: '/financial', icon: Wallet, label: 'Financial' },
     { to: '/health', icon: Heart, label: 'Health Tracker' },
+    { to: '/passwords', icon: Shield, label: 'Passwords' },
   ];
 
   const isActive = (path: string) => {
