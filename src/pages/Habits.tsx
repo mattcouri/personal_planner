@@ -385,6 +385,191 @@ export default function Habits() {
     return state.habitLegend[status]?.color || '#6B7280';
   };
 
+  // Advanced KPI Calculation Functions
+  const calculateHabitKPIs = (goalId: string, habitId: string) => {
+    const goal = goals.find(g => g.id === goalId);
+    const habit = goal?.habits.find(h => h.id === habitId);
+    if (!goal || !habit) return null;
+
+    // Get window dates (start_date ≤ d ≤ min(end_date, Today))
+    const startDate = new Date(dateRange.start);
+    const endDate = new Date(Math.min(new Date(dateRange.end).getTime(), TODAY.getTime()));
+    const windowDays = eachDayOfInterval({ start: startDate, end: endDate });
+
+    // Build planned mask and completion data
+    const dayData = windowDays.map(date => {
+      const isScheduled = isHabitScheduledForDay(habit, date);
+      const status = getHabitStatus(goalId, habitId, date);
+      const isPlanned = isScheduled && status !== 'notScheduled';
+      const isCompleted = status === 'completed';
+      const isPartial = status === 'partial';
+      const isMissed = status === 'missed';
+      
+      return {
+        date,
+        isPlanned,
+        isCompleted,
+        isPartial,
+        isMissed,
+        completionValue: isCompleted ? 1 : (isPartial ? 0.5 : 0)
+      };
+    });
+
+    const plannedDays = dayData.filter(d => d.isPlanned);
+    const P = plannedDays.length;
+
+    // If no planned occurrences, return neutral scores
+    if (P === 0) {
+      return {
+        completionRate: 50,
+        streakLength: 50,
+        adherenceVariance: 50,
+        onTimeRate: 50,
+        recoveryAfterMiss: 50,
+        trendDirection: 50,
+        weightedConsistency: 50,
+        resilience: 50,
+        overallScore: 50,
+        plannedDays: 0,
+        completedDays: 0
+      };
+    }
+
+    // 1) Completion Rate
+    const completedCount = plannedDays.reduce((sum, d) => sum + d.completionValue, 0);
+    const CR = completedCount / P;
+    const completionRate = Math.round(100 * CR);
+
+    // 2) Streak Length (boundary-aware)
+    let currentStreak = 0;
+    let maxStreak = 0;
+    for (const day of plannedDays) {
+      if (day.isCompleted) {
+        currentStreak++;
+        maxStreak = Math.max(maxStreak, currentStreak);
+      } else {
+        currentStreak = 0;
+      }
+    }
+    const S_max = Math.min(KPI_CONFIG.S_STAR, P);
+    const streakLength = Math.round(100 * Math.min(maxStreak / S_max, 1));
+
+    // 3) Adherence Variance (inverse)
+    const completionValues = plannedDays.map(d => d.completionValue);
+    const mean = completionValues.reduce((a, b) => a + b, 0) / completionValues.length;
+    const variance = completionValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / completionValues.length;
+    const adherenceVariance = Math.round(100 * (1 - Math.min(variance / 0.25, 1)));
+
+    // 4) On-Time Rate (assuming completed = on-time for simplicity)
+    const onTimeCount = plannedDays.filter(d => d.isCompleted).length;
+    const totalCompleted = Math.max(1, plannedDays.filter(d => d.completionValue > 0).length);
+    const onTimeRate = Math.round(100 * (onTimeCount / totalCompleted));
+
+    // 5) Recovery After Miss
+    let recoveryDays = [];
+    for (let i = 0; i < plannedDays.length - 1; i++) {
+      if (plannedDays[i].isMissed) {
+        for (let j = i + 1; j < plannedDays.length; j++) {
+          if (plannedDays[j].isCompleted) {
+            recoveryDays.push(j - i);
+            break;
+          }
+        }
+      }
+    }
+    const avgRecovery = recoveryDays.length > 0 ? recoveryDays.reduce((a, b) => a + b, 0) / recoveryDays.length : 1;
+    const recoveryAfterMiss = Math.round(100 * (1 - Math.min(avgRecovery / KPI_CONFIG.R_STAR, 1)));
+
+    // 6) Trend Direction
+    const midPoint = Math.floor(plannedDays.length / 2);
+    const firstHalf = plannedDays.slice(0, midPoint);
+    const secondHalf = plannedDays.slice(midPoint);
+    
+    const CR_H1 = firstHalf.length > 0 ? firstHalf.reduce((sum, d) => sum + d.completionValue, 0) / firstHalf.length : 0;
+    const CR_H2 = secondHalf.length > 0 ? secondHalf.reduce((sum, d) => sum + d.completionValue, 0) / secondHalf.length : 0;
+    const delta = CR_H2 - CR_H1;
+    const trendDirection = Math.round(100 * Math.max(0, Math.min(1, (delta + 1) / 2)));
+
+    // 7) Weighted Consistency (harmonic mean of completion and streak)
+    const c = Math.max(CR, KPI_CONFIG.EPSILON);
+    const s = Math.max(streakLength / 100, KPI_CONFIG.EPSILON);
+    const WC = 2 / (1/c + 1/s);
+    const weightedConsistency = Math.round(100 * WC);
+
+    // 8) Resilience (simplified - completion rate after setback periods)
+    const weeklyCompletions = [];
+    for (let i = 0; i < plannedDays.length; i += 7) {
+      const week = plannedDays.slice(i, i + 7);
+      if (week.length > 0) {
+        const weekCR = week.reduce((sum, d) => sum + d.completionValue, 0) / week.length;
+        weeklyCompletions.push(weekCR);
+      }
+    }
+    
+    let resilienceScores = [];
+    for (let i = 0; i < weeklyCompletions.length - 1; i++) {
+      if (weeklyCompletions[i] < KPI_CONFIG.TAU) {
+        resilienceScores.push(weeklyCompletions[i + 1]);
+      }
+    }
+    const avgResilience = resilienceScores.length > 0 ? resilienceScores.reduce((a, b) => a + b, 0) / resilienceScores.length : CR;
+    const resilience = Math.round(100 * avgResilience);
+
+    // Overall Habit Score (weighted average)
+    const weights = KPI_CONFIG.WEIGHTS;
+    const overallScore = Math.round(
+      (weights.completion * completionRate +
+       weights.streak * streakLength +
+       weights.adherence * adherenceVariance +
+       weights.onTime * onTimeRate +
+       weights.recovery * recoveryAfterMiss +
+       weights.trend * trendDirection +
+       weights.consistency * weightedConsistency +
+       weights.resilience * resilience) /
+      (weights.completion + weights.streak + weights.adherence + weights.onTime + 
+       weights.recovery + weights.trend + weights.consistency + weights.resilience)
+    );
+
+    return {
+      completionRate: Math.max(0, Math.min(100, completionRate)),
+      streakLength: Math.max(0, Math.min(100, streakLength)),
+      adherenceVariance: Math.max(0, Math.min(100, adherenceVariance)),
+      onTimeRate: Math.max(0, Math.min(100, onTimeRate)),
+      recoveryAfterMiss: Math.max(0, Math.min(100, recoveryAfterMiss)),
+      trendDirection: Math.max(0, Math.min(100, trendDirection)),
+      weightedConsistency: Math.max(0, Math.min(100, weightedConsistency)),
+      resilience: Math.max(0, Math.min(100, resilience)),
+      overallScore: Math.max(0, Math.min(100, overallScore)),
+      plannedDays: P,
+      completedDays: Math.round(completedCount)
+    };
+  };
+
+  // Enhanced Goal Metrics with KPI rollup
+  const calculateAdvancedGoalMetrics = (goalId: string) => {
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return { totalHabits: 0, avgCompletion: 0, streak: 0, totalCompleted: 0, overallScore: 0 };
+
+    const habitKPIs = goal.habits.map(habit => calculateHabitKPIs(goalId, habit.id)).filter(Boolean);
+    
+    if (habitKPIs.length === 0) {
+      return { totalHabits: 0, avgCompletion: 0, streak: 0, totalCompleted: 0, overallScore: 0 };
+    }
+
+    const avgCompletion = Math.round(habitKPIs.reduce((sum, kpi) => sum + kpi.completionRate, 0) / habitKPIs.length);
+    const avgStreak = Math.round(habitKPIs.reduce((sum, kpi) => sum + kpi.streakLength, 0) / habitKPIs.length);
+    const totalCompleted = habitKPIs.reduce((sum, kpi) => sum + kpi.completedDays, 0);
+    const overallScore = Math.round(habitKPIs.reduce((sum, kpi) => sum + kpi.overallScore, 0) / habitKPIs.length);
+
+    return {
+      totalHabits: goal.habits.length,
+      avgCompletion,
+      streak: avgStreak,
+      totalCompleted,
+      overallScore
+    };
+  };
+
   const setQuickDateRange = (type: string) => {
     const today = new Date();
     let start = new Date();
@@ -482,66 +667,30 @@ export default function Habits() {
   };
 
   // Calculate metrics
+  // Legacy method for backward compatibility
   const calculateHabitMetrics = (goalId: string, habitId: string) => {
-    const completedDays = daysInRange.filter(date => {
-      const status = getHabitStatus(goalId, habitId, date);
-      return status === 'completed';
-    }).length;
+    const kpis = calculateHabitKPIs(goalId, habitId);
+    if (!kpis) return { completedDays: 0, scheduledDays: 0, completionRate: 0 };
     
-    const scheduledDays = daysInRange.filter(date => {
-      const goal = goals.find(g => g.id === goalId);
-      const habit = goal?.habits.find(h => h.id === habitId);
-      return habit ? isHabitScheduledForDay(habit, date) : false;
-    }).length;
-
-    const completionRate = scheduledDays > 0 ? Math.round((completedDays / scheduledDays) * 100) : 0;
-    
-    return { completedDays, scheduledDays, completionRate };
+    return {
+      completedDays: kpis.completedDays,
+      scheduledDays: kpis.plannedDays,
+      completionRate: kpis.completionRate
+    };
   };
 
   const calculateGoalMetrics = (goalId: string) => {
-    const goal = goals.find(g => g.id === goalId);
-    if (!goal) return { totalHabits: 0, avgCompletion: 0, streak: 0, totalCompleted: 0 };
-
-    const habitMetrics = goal.habits.map(habit => calculateHabitMetrics(goalId, habit.id));
-    const avgCompletion = habitMetrics.length > 0 
-      ? Math.round(habitMetrics.reduce((sum, m) => sum + m.completionRate, 0) / habitMetrics.length)
-      : 0;
-    
-    const totalCompleted = habitMetrics.reduce((sum, m) => sum + m.completedDays, 0);
-    
-    // Calculate current streak (simplified)
-    let streak = 0;
-    for (let i = daysInRange.length - 1; i >= 0; i--) {
-      const date = daysInRange[i];
-      const dayHasCompletion = goal.habits.some(habit => {
-        if (!isHabitScheduledForDay(habit, date)) return false;
-        return getHabitStatus(goalId, habit.id, date) === 'completed';
-      });
-      
-      if (dayHasCompletion) {
-        streak++;
-      } else {
-        break;
-      }
-    }
-
-    return {
-      totalHabits: goal.habits.length,
-      avgCompletion,
-      streak,
-      totalCompleted
-    };
+    return calculateAdvancedGoalMetrics(goalId);
   };
 
   // Calculate dashboard metrics
   const dashboardMetrics = {
     totalGoals: goals.length,
     totalHabits: goals.reduce((sum, g) => sum + g.habits.length, 0),
-    overallCompletion: goals.length > 0 
-      ? Math.round(goals.reduce((sum, g) => sum + calculateGoalMetrics(g.id).avgCompletion, 0) / goals.length)
+    overallCompletion: goals.length > 0
+      ? Math.round(goals.reduce((sum, g) => sum + calculateAdvancedGoalMetrics(g.id).overallScore, 0) / goals.length)
       : 0,
-    activeStreak: Math.max(...goals.map(g => calculateGoalMetrics(g.id).streak), 0)
+    activeStreak: Math.max(...goals.map(g => calculateAdvancedGoalMetrics(g.id).streak), 0)
   };
 
   const sortedGoals = [...goals].sort((a, b) => a.position - b.position);
@@ -782,7 +931,8 @@ export default function Habits() {
                       </thead>
                       <tbody>
                         {goal.habits.map(habit => {
-                          const habitMetrics = calculateHabitMetrics(goal.id, habit.id);
+                          const habitKPIs = calculateHabitKPIs(goal.id, habit.id);
+                          const habitMetrics = calculateHabitMetrics(goal.id, habit.id); // For backward compatibility
                           
                           return (
                             <tr key={habit.id} className="border-b border-gray-100 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/30">
@@ -796,6 +946,22 @@ export default function Habits() {
                                     {habit.description && (
                                       <div className="text-xs text-gray-500 dark:text-gray-400">
                                         {habit.description}
+                                      </div>
+                                    )}
+                                    {habitKPIs && (
+                                      <div className="text-xs text-gray-600 dark:text-gray-300 mt-1">
+                                        <div className="grid grid-cols-4 gap-1">
+                                          <span title="Completion Rate">CR: {habitKPIs.completionRate}%</span>
+                                          <span title="Streak Length">SL: {habitKPIs.streakLength}%</span>
+                                          <span title="Trend Direction">TD: {habitKPIs.trendDirection}%</span>
+                                          <span title="Overall Score">OS: {habitKPIs.overallScore}%</span>
+                                        </div>
+                                        <div className="grid grid-cols-4 gap-1 mt-1">
+                                          <span title="Adherence Variance">AV: {habitKPIs.adherenceVariance}%</span>
+                                          <span title="Recovery">RC: {habitKPIs.recoveryAfterMiss}%</span>
+                                          <span title="Consistency">WC: {habitKPIs.weightedConsistency}%</span>
+                                          <span title="Resilience">RS: {habitKPIs.resilience}%</span>
+                                        </div>
                                       </div>
                                     )}
                                   </div>
@@ -819,43 +985,51 @@ export default function Habits() {
                               </td>
                               {daysInRange.map((date, i) => {
                                 const isScheduled = isHabitScheduledForDay(habit, date);
+                                const isFutureDate = date > TODAY;
                                 const status = getHabitStatus(goal.id, habit.id, date);
                                 const icon = getStatusIcon(status);
                                 const color = getStatusColor(status);
+                                
+                                // Show "Scheduled (future)" for future dates that are scheduled
+                                const displayStatus = isFutureDate && isScheduled && status === 'notScheduled' ? 'scheduled' : status;
+                                const displayIcon = isFutureDate && isScheduled && status === 'notScheduled' ? '○' : icon;
+                                const displayColor = isFutureDate && isScheduled && status === 'notScheduled' ? '#9CA3AF' : color;
                                 
                                 return (
                                   <td key={i} className="text-center py-1 px-0.5">
                                     <button
                                       onClick={() => {
-                                        if (isScheduled && status !== 'notScheduled') {
-                                          // Cycle through scheduled statuses or set to not scheduled
+                                        // Allow toggling for any day, but different logic for scheduled vs unscheduled
+                                        if (isScheduled) {
+                                          // For scheduled days: cycle through all statuses including notScheduled
                                           const statusKeys = ['completed', 'partial', 'missed', 'notScheduled'];
-                                          const currentIndex = statusKeys.indexOf(status);
+                                          const currentIndex = statusKeys.indexOf(displayStatus);
                                           const nextIndex = (currentIndex + 1) % statusKeys.length;
                                           updateHabitStatus(goal.id, habit.id, date, statusKeys[nextIndex]);
                                         } else {
-                                          // Cycle through all statuses for unscheduled days or not scheduled
+                                          // For unscheduled days: cycle through completion statuses
                                           const statusKeys = Object.keys(state.habitLegend);
-                                          const currentIndex = statusKeys.indexOf(status);
+                                          const currentIndex = statusKeys.indexOf(displayStatus);
                                           const nextIndex = (currentIndex + 1) % statusKeys.length;
                                           updateHabitStatus(goal.id, habit.id, date, statusKeys[nextIndex]);
                                         }
                                       }}
                                       className="w-5 h-5 rounded border border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 flex items-center justify-center text-xs font-medium"
                                       style={{ 
-                                        color, 
-                                        backgroundColor: isScheduled || status !== 'notScheduled' ? `${color}20` : 'transparent',
+                                        color: displayColor, 
+                                        backgroundColor: isScheduled || displayStatus !== 'notScheduled' ? `${displayColor}20` : 'transparent',
                                         borderStyle: isScheduled ? 'solid' : 'dotted'
                                       }}
+                                      title={isFutureDate && isScheduled && status === 'notScheduled' ? 'Scheduled (future date)' : state.habitLegend[displayStatus]?.label}
                                     >
-                                      {isScheduled || status !== 'notScheduled' ? icon : '·'}
+                                      {isScheduled || displayStatus !== 'notScheduled' ? displayIcon : '·'}
                                     </button>
                                   </td>
                                 );
                               })}
                               <td className="text-center py-1 px-1">
-                                <div className="text-sm font-bold" style={{ color: habitMetrics.completionRate >= 80 ? '#10B981' : habitMetrics.completionRate >= 60 ? '#F59E0B' : '#EF4444' }}>
-                                  {habitMetrics.completionRate}%
+                                <div className="text-sm font-bold" style={{ color: (habitKPIs?.overallScore || 0) >= 80 ? '#10B981' : (habitKPIs?.overallScore || 0) >= 60 ? '#F59E0B' : '#EF4444' }}>
+                                  {habitKPIs?.overallScore || 0}%
                                 </div>
                               </td>
                             </tr>
@@ -886,10 +1060,18 @@ export default function Habits() {
                 {legend.icon}
               </div>
               <span className="text-sm text-gray-700 dark:text-gray-300">
-                {legend.label}
+                {key === 'notScheduled' ? 'Not Scheduled' : legend.label}
               </span>
             </div>
           ))}
+          <div className="flex items-center space-x-3">
+            <div className="w-5 h-5 flex items-center justify-center border border-gray-400 rounded">
+              <div className="text-gray-400">○</div>
+            </div>
+            <span className="text-sm text-gray-700 dark:text-gray-300">
+              Scheduled (future date)
+            </span>
+          </div>
           <div className="flex items-center space-x-3">
             <div className="w-5 h-5 flex items-center justify-center border border-gray-400 border-dotted rounded">
               <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
@@ -897,6 +1079,23 @@ export default function Habits() {
             <span className="text-sm text-gray-700 dark:text-gray-300">
               Unscheduled
             </span>
+          </div>
+        </div>
+        
+        {/* KPI Legend */}
+        <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <h4 className="text-md font-medium text-gray-900 dark:text-white mb-3">
+            KPI Abbreviations
+          </h4>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-gray-600 dark:text-gray-300">
+            <div><strong>CR:</strong> Completion Rate</div>
+            <div><strong>SL:</strong> Streak Length</div>
+            <div><strong>AV:</strong> Adherence Variance</div>
+            <div><strong>TD:</strong> Trend Direction</div>
+            <div><strong>RC:</strong> Recovery Rate</div>
+            <div><strong>WC:</strong> Weighted Consistency</div>
+            <div><strong>RS:</strong> Resilience</div>
+            <div><strong>OS:</strong> Overall Score</div>
           </div>
         </div>
       </div>
