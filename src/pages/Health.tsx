@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Heart, Plus, TrendingUp, Calendar, Edit3, Trash2, Target, Settings, BarChart3, Activity, Zap, Award } from 'lucide-react';
+import { Heart, Plus, TrendingUp, Calendar, Edit3, Trash2, Target, Settings, BarChart3, Activity, Zap, Award, ArrowUp, ArrowDown } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { format, eachDayOfInterval } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, AreaChart, Area, BarChart, Bar } from 'recharts';
@@ -664,18 +664,6 @@ function AddHealthDimensionModal({
           </h3>
         </div>
 
-
-
-
-
-
-
-
-
-
-
-
-
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -686,6 +674,11 @@ function AddHealthDimensionModal({
               required
               value={formData.label}
               onChange={(e) => setFormData({ ...formData, label: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="e.g., Emotional Health"
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Description
@@ -698,7 +691,7 @@ function AddHealthDimensionModal({
               placeholder="Brief description of this health dimension"
             />
           </div>
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Color
@@ -717,7 +710,7 @@ function AddHealthDimensionModal({
               ))}
             </div>
           </div>
-              placeholder="e.g., Emotional Health"
+
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Position on Page
@@ -731,7 +724,7 @@ function AddHealthDimensionModal({
               placeholder="Display order (1, 2, 3...)"
             />
           </div>
-            />
+
           <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700/50">
             <div className="flex items-start space-x-3">
               <input
@@ -751,7 +744,7 @@ function AddHealthDimensionModal({
               </div>
             </div>
           </div>
-          </div>
+
           <div className="flex gap-2 pt-4">
             <button
               type="button"
@@ -767,6 +760,12 @@ function AddHealthDimensionModal({
               {dimension ? 'Update' : 'Create'} Health Dimension
             </button>
           </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // Management Modal Component
 function ManageHealthDimensionsModal({
   dimensions,
@@ -782,7 +781,7 @@ function ManageHealthDimensionsModal({
   onClose: () => void;
 }) {
   const [localDimensions, setLocalDimensions] = useState([...dimensions].sort((a, b) => a.position - b.position));
-        </form>
+
   const moveUp = (index: number) => {
     if (index > 0) {
       const newDimensions = [...localDimensions];
@@ -795,7 +794,7 @@ function ManageHealthDimensionsModal({
       onReorder(reordered);
     }
   };
-      </div>
+
   const moveDown = (index: number) => {
     if (index < localDimensions.length - 1) {
       const newDimensions = [...localDimensions];
@@ -808,7 +807,7 @@ function ManageHealthDimensionsModal({
       onReorder(reordered);
     }
   };
-    </div>
+
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -820,7 +819,7 @@ function ManageHealthDimensionsModal({
             Edit, delete, or reorder existing health dimensions
           </p>
         </div>
-  );
+
         <div className="p-6">
           <div className="space-y-3">
             {localDimensions.map((dimension, index) => (
@@ -886,7 +885,7 @@ function ManageHealthDimensionsModal({
             ))}
           </div>
         </div>
-}
+
         <div className="p-6 border-t border-gray-200 dark:border-gray-700">
           <button
             onClick={onClose}
@@ -897,5 +896,46 @@ function ManageHealthDimensionsModal({
         </div>
       </div>
     </div>
+  );
+}
+
+function HealthDimensionModal({
+  dimension,
+  onSave,
+  onDelete,
+  onClose,
+  existingDimensions,
+  onEdit
+}: {
+  dimension: HealthDimension | null;
+  onSave: (dimension: Omit<HealthDimension, 'id' | 'position'> | HealthDimension, createGoal: boolean) => void;
+  onDelete: (dimensionId: string) => void;
+  onClose: () => void;
+  existingDimensions: HealthDimension[];
+  onEdit: (dimension: HealthDimension) => void;
+}) {
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  if (showAddModal || dimension) {
+    return (
+      <AddHealthDimensionModal
+        dimension={dimension}
+        onSave={onSave}
+        onClose={() => {
+          setShowAddModal(false);
+          if (!dimension) onClose();
+        }}
+      />
+    );
+  }
+
+  return (
+    <ManageHealthDimensionsModal
+      dimensions={existingDimensions}
+      onEdit={onEdit}
+      onDelete={onDelete}
+      onReorder={() => {}}
+      onClose={onClose}
+    />
   );
 }
