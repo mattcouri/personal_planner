@@ -23,7 +23,7 @@ export default function TodoModal({
     startTime: '09:00',
     endTime: '10:00',
     duration: 60,
-    noTimeAssigned: true,
+    noTimeAssigned: false,
     useDuration: false,
     goalDate: '',
     limitDate: '',
@@ -224,7 +224,7 @@ export default function TodoModal({
 
           {/* 5. Use duration instead of end time checkbox */}
           {!formData.noTimeAssigned && (
-            <div className="space-y-3">
+            <div className="space-y-2">
               <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
