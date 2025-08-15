@@ -112,7 +112,7 @@ export default function Passwords() {
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
         {passwordsWithPin.length > 0 ? (
-            {passwordsWithPin.map(password => (
+            passwordsWithPin.map(password => (
               <tr key={password.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-all duration-200">
                 {/* Account Name */}
                 <td className="px-6 py-4">
@@ -236,7 +236,7 @@ export default function Passwords() {
                     </div>
                 </td>
               </tr>
-            ))}
+            ))
         ) : (
           <tr>
             <td colSpan={5} className="p-8 text-center">
