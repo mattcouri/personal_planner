@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, CheckSquare, Filter, Search, Folder, Calendar, Eye, EyeOff, FolderPlus, Trash2 } from 'lucide-react';
+import { Plus, CheckSquare, Filter, Search, Folder, Calendar, Eye, EyeOff, FolderPlus, Trash2, Target } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { format } from 'date-fns';
 import TodoModal from '../components/TodoModal';
@@ -31,6 +31,27 @@ export default function TodoList() {
     
     return matchesSearch && matchesProject && matchesPriority;
   });
+
+  // Calculate KPI metrics
+  const calculateKPIs = () => {
+    const totalTodos = state.todos.filter(todo => !todo.completed).length;
+    const completedTodos = state.todos.filter(todo => todo.completed).length;
+    const overdueTodos = state.todos.filter(todo => 
+      !todo.completed && todo.dueDate && new Date(todo.dueDate) < new Date()
+    ).length;
+    const highPriorityTodos = state.todos.filter(todo => 
+      !todo.completed && todo.priority === 'high'
+    ).length;
+    
+    return {
+      totalTodos,
+      completedTodos,
+      overdueTodos,
+      highPriorityTodos
+    };
+  };
+
+  const kpis = calculateKPIs();
 
   const toggleTodo = (id: string) => {
     const todo = state.todos.find(t => t.id === id);
@@ -182,21 +203,21 @@ export default function TodoList() {
         </div>
 
         <div className="flex items-center space-x-3">
-          <button 
-            onClick={() => setShowProjectModal(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/40 transition-all duration-200 border border-blue-300 dark:border-blue-700/50"
-          >
-            <FolderPlus className="w-4 h-4" />
-            <span>Projects</span>
-          </button>
-          
           <a
             href="/completed-tasks"
-            className="flex items-center space-x-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/40 transition-all duration-200 border border-green-300 dark:border-green-700/50"
+            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
           >
             <CheckSquare className="w-4 h-4" />
             <span>Completed Tasks</span>
           </a>
+          
+          <button 
+            onClick={() => setShowProjectModal(true)}
+            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+          >
+            <FolderPlus className="w-4 h-4" />
+            <span>Projects</span>
+          </button>
           
           <button 
             onClick={() => handleAddTodo()}
@@ -205,6 +226,49 @@ export default function TodoList() {
             <Plus className="w-4 h-4" />
             <span>New Task</span>
           </button>
+        </div>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4 border border-blue-200 dark:border-blue-700/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Active Tasks</p>
+              <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">{kpis.totalTodos}</p>
+            </div>
+            <CheckSquare className="w-8 h-8 text-blue-500" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4 border border-green-200 dark:border-green-700/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-green-600 dark:text-green-400">Completed</p>
+              <p className="text-2xl font-bold text-green-900 dark:text-green-100">{kpis.completedTodos}</p>
+            </div>
+            <CheckSquare className="w-8 h-8 text-green-500" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 rounded-xl p-4 border border-red-200 dark:border-red-700/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-red-600 dark:text-red-400">Overdue</p>
+              <p className="text-2xl font-bold text-red-900 dark:text-red-100">{kpis.overdueTodos}</p>
+            </div>
+            <Calendar className="w-8 h-8 text-red-500" />
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-xl p-4 border border-orange-200 dark:border-orange-700/50">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-orange-600 dark:text-orange-400">High Priority</p>
+              <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">{kpis.highPriorityTodos}</p>
+            </div>
+            <Target className="w-8 h-8 text-orange-500" />
+          </div>
         </div>
       </div>
 
@@ -321,69 +385,88 @@ function DraggableTodoItem({
     transition,
   };
 
+  // Calculate display date/duration
+  const getDisplayInfo = () => {
+    if (todo.limitDate) {
+      return format(new Date(todo.limitDate), 'MMM d');
+    }
+    if (todo.dueDate) {
+      return format(new Date(todo.dueDate), 'MMM d');
+    }
+    if (todo.duration) {
+      return todo.duration >= 60 ? `${Math.floor(todo.duration / 60)}h${todo.duration % 60 > 0 ? ` ${todo.duration % 60}m` : ''}` : `${todo.duration}m`;
+    }
+    return '';
+  };
+
+  const getPriorityIndicator = () => {
+    const colors = {
+      high: '#EF4444',
+      medium: '#F59E0B', 
+      low: '#10B981'
+    };
+    return colors[todo.priority as keyof typeof colors] || 'transparent';
+  };
+
   return (
-    <div 
+    <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      className={`bg-white dark:bg-gray-700 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all duration-200 cursor-move ${
+      className={`bg-white dark:bg-gray-700 rounded-md p-2 shadow-sm border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all duration-200 cursor-move group ${
         isDragging ? 'opacity-50 scale-95' : ''
       }`}
     >
-      <div className="flex items-start space-x-3">
+      <div className="flex items-center space-x-2">
+        {/* Priority Indicator */}
+        <div 
+          className="w-1 h-4 rounded-full flex-shrink-0"
+          style={{ backgroundColor: getPriorityIndicator() }}
+        />
+        
         <button
           onClick={() => onToggle(todo.id)}
-          className={`mt-1 w-4 h-4 rounded border-2 transition-all duration-200 ${
+          className={`w-3 h-3 rounded border transition-all duration-200 flex-shrink-0 ${
             todo.completed
-              ? 'bg-green-500 border-green-500 text-white'
+              ? 'bg-green-500 border-green-500'
               : 'border-gray-300 dark:border-gray-500 hover:border-primary-500'
           }`}
         >
-          {todo.completed && (
-            <div className="w-2 h-2 bg-white rounded-full mx-auto mt-0.5"></div>
-          )}
         </button>
         
         <div className="flex-1 min-w-0">
-          <h4 
-            className={`font-medium text-sm cursor-pointer hover:text-primary-600 ${
-              todo.completed 
-                ? 'line-through text-gray-500 dark:text-gray-400' 
-                : 'text-gray-900 dark:text-white'
-            }`}
-            onDoubleClick={() => onEdit(todo)}
-          >
-            {todo.title}
-          </h4>
-          
-          {todo.description && (
-            <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">
-              {todo.description}
-            </p>
-          )}
-          
-          <div className="flex items-center justify-between mt-2">
-            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${getPriorityColor(todo.priority)}`}>
-              {todo.priority}
-            </span>
-            
-            {todo.dueDate && (
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                {format(todo.dueDate, 'MMM d')}
-              </span>
-            )}
-            
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(todo.id);
-              }}
-              className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-gray-400 hover:text-red-500 p-1"
-              title="Delete task"
+          <div className="flex items-center justify-between">
+            <h4 
+              className={`font-medium text-xs cursor-pointer hover:text-primary-600 truncate ${
+                todo.completed 
+                  ? 'line-through text-gray-500 dark:text-gray-400' 
+                  : 'text-gray-900 dark:text-white'
+              }`}
+              onDoubleClick={() => onEdit(todo)}
+              title={todo.title}
             >
-              <Trash2 className="w-3 h-3" />
-            </button>
+              {todo.title}
+            </h4>
+            
+            <div className="flex items-center space-x-1 flex-shrink-0">
+              {getDisplayInfo() && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {getDisplayInfo()}
+                </span>
+              )}
+              
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(todo.id);
+                }}
+                className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-gray-400 hover:text-red-500 p-0.5"
+                title="Delete task"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -412,33 +495,33 @@ function ProjectColumn({
   });
 
   return (
-    <div className="flex-shrink-0 w-80">
+    <div className="flex-shrink-0 w-64">
       <div 
         ref={setNodeRef}
-        className={`bg-gradient-to-r from-primary-50 to-accent-50 dark:from-primary-900/20 dark:to-accent-900/20 rounded-lg p-4 border border-primary-200 dark:border-primary-700/50 transition-all duration-200 ${
+        className={`bg-gradient-to-r from-primary-50 to-accent-50 dark:from-primary-900/20 dark:to-accent-900/20 rounded-lg p-3 border border-primary-200 dark:border-primary-700/50 transition-all duration-200 ${
           isOver ? 'ring-2 ring-primary-400 bg-primary-100 dark:bg-primary-800/30' : ''
         }`}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center">
-            <Folder className="w-5 h-5 mr-2 text-primary-500" />
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center">
+            <Folder className="w-4 h-4 mr-1 text-primary-500" />
             {project.name}
           </h3>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1">
             <button
               onClick={() => onAddTodo(project.id)}
-              className="w-6 h-6 bg-primary-500 hover:bg-primary-600 text-white rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
+              className="w-5 h-5 bg-primary-500 hover:bg-primary-600 text-white rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
               title="Add task to this project"
             >
               <Plus className="w-3 h-3" />
             </button>
-            <span className="bg-primary-100 dark:bg-primary-800 text-primary-700 dark:text-primary-200 px-2 py-1 rounded-full text-sm font-medium">
+            <span className="bg-primary-100 dark:bg-primary-800 text-primary-700 dark:text-primary-200 px-1.5 py-0.5 rounded-full text-xs font-medium">
               {project.todos.length}
             </span>
           </div>
         </div>
         
-        <div className="space-y-3 max-h-96 overflow-y-auto">
+        <div className="space-y-1 max-h-80 overflow-y-auto">
           {project.todos.map((todo, index) => (
             <DraggableTodoItem
               key={todo.id}
@@ -452,12 +535,12 @@ function ProjectColumn({
           ))}
           
           {project.todos.length === 0 && (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              <CheckSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No tasks in this project</p>
+            <div className="text-center py-6 text-gray-500 dark:text-gray-400">
+              <CheckSquare className="w-6 h-6 mx-auto mb-1 opacity-50" />
+              <p className="text-xs">No tasks</p>
               {isOver && (
-                <p className="text-xs text-primary-600 dark:text-primary-400 mt-2">
-                  Drop task here
+                <p className="text-xs text-primary-600 dark:text-primary-400 mt-1">
+                  Drop here
                 </p>
               )}
             </div>
