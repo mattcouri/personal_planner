@@ -167,7 +167,6 @@ export default function Passwords() {
                         )}
                       </button>
                       <button
-                          {password.description || password.notes}
                         title="Copy password"
                       >
                         <Copy className="w-3 h-3" />
