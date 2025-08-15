@@ -1,542 +1,771 @@
-import React, { useState } from 'react';
-import { Plus, CheckSquare, Filter, Search, Folder, Calendar, Eye, EyeOff, FolderPlus, Trash2, Target } from 'lucide-react';
-import { useData } from '../contexts/DataContext';
-import { format } from 'date-fns';
-import TodoModal from '../components/TodoModal';
-import ProjectModal from '../components/ProjectModal';
-import { useDroppable } from '@dnd-kit/core';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import DragDropProvider from '../components/DragDropProvider';
+// contexts/DataContext.tsx
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useEffect,
+  ReactNode,
+} from 'react';
 
-export default function TodoList() {
-  const { state, dispatch } = useData();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterProject, setFilterProject] = useState<string>('');
-  const [filterPriority, setFilterPriority] = useState<string>('');
-  const [showTodoModal, setShowTodoModal] = useState(false);
-  const [showProjectModal, setShowProjectModal] = useState(false);
-  const [editTodo, setEditTodo] = useState<any>(null);
-  const [todoProjectId, setTodoProjectId] = useState<string>('');
+interface Event {
+  id: string;
+  title: string;
+  description?: string;
+  start: Date;
+  end: Date;
+  color?: string;
+  location?: string;
+  guests?: string[];
+  meetLink?: string;
+}
 
-  // Filter todos (include all todos - completed ones stay visible)
-  const filteredTodos = state.todos.filter(todo => {
-    const matchesSearch = todo.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         todo.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesProject = !filterProject || todo.projectId === filterProject;
-    const matchesPriority = !filterPriority || todo.priority === filterPriority;
-    
-    return matchesSearch && matchesProject && matchesPriority;
-  });
+interface Todo {
+  id: string;
+  title: string;
+  description?: string;
+  completed: boolean;
+  priority: 'low' | 'medium' | 'high';
+  projectId: string;
+  dueDate: Date;
+  createdAt: Date;
+  duration?: number; // Duration in minutes
+  position: number; // Position within project for ordering
+}
 
-  // Calculate KPI metrics
-  const calculateKPIs = () => {
-    const totalTodos = state.todos.length;
-    const completedTodos = state.todos.filter(todo => todo.completed).length;
-    const overdueTodos = state.todos.filter(todo => 
-      !todo.completed && todo.dueDate && new Date(todo.dueDate) < new Date()
-    ).length;
-    const highPriorityTodos = state.todos.filter(todo => 
-      !todo.completed && todo.priority === 'high'
-    ).length;
-    
-    return {
-      totalTodos,
-      completedTodos,
-      overdueTodos,
-      highPriorityTodos
-    };
-  };
+interface PlanItem {
+  id: string;
+  title: string;
+  description?: string;
+  type: 'event' | 'todo';
+  start: Date;
+  end: Date;
+  originalId: string;
+  completed: boolean;
+  location?: string;
+  guests?: string[];
+  meetLink?: string;
+  priority?: 'low' | 'medium' | 'high';
+  projectId?: string;
+}
 
-  const kpis = calculateKPIs();
+interface Project {
+  id: string;
+  name: string;
+}
 
-  const toggleTodo = (id: string) => {
-    const todo = state.todos.find(t => t.id === id);
-    if (todo) {
-      dispatch({ type: 'UPDATE_TODO', payload: { ...todo, completed: !todo.completed } });
+interface AppState {
+  events: Event[];
+  todos: Todo[];
+  dailyPlans: Record<string, PlanItem[]>;
+  projects: Project[];
+  passwords: any[];
+  habits: any[];
+  habitLegend: Record<string, { icon: string; label: string; color: string }>;
+  financialAccounts: any[];
+  financialTransactions: any[];
+  financialGoals: any[];
+  healthScores: any[];
+}
+
+type Action =
+  | { type: 'ADD_EVENT'; payload: Event }
+  | { type: 'UPDATE_EVENT'; payload: Event }
+  | { type: 'ADD_TODO'; payload: Todo }
+  | { type: 'UPDATE_TODO'; payload: Todo }
+  | { type: 'DELETE_TODO'; payload: string }
+  | { type: 'REORDER_TODOS'; payload: { projectId: string; todos: Todo[] } }
+  | { type: 'MOVE_TODO_TO_PROJECT'; payload: { todoId: string; newProjectId: string; newPosition: number } }
+  | { type: 'ADD_PROJECT'; payload: Project }
+  | { type: 'UPDATE_PROJECT'; payload: Project }
+  | { type: 'DELETE_PROJECT'; payload: string }
+  | { type: 'SET_DAILY_PLAN'; payload: { date: string; items: PlanItem[] } }
+  | { type: 'SET_HABIT'; payload: any }
+  | { type: 'SET_HEALTH_SCORE'; payload: any };
+
+const initialState: AppState = {
+  events: [],
+  todos: [],
+  dailyPlans: {},
+  projects: [
+    { id: 'work', name: 'Work Projects' },
+    { id: 'personal', name: 'Personal Tasks' },
+    { id: 'health', name: 'Health & Fitness' },
+    { id: 'finance', name: 'Financial Planning' },
+    { id: 'learning', name: 'Learning & Development' },
+    { id: 'home', name: 'Home & Family' },
+    { id: 'creative', name: 'Creative Projects' },
+    { id: 'travel', name: 'Travel & Adventures' }
+  ],
+  passwords: [
+    {
+      id: 'pwd001',
+      name: 'Netflix Account',
+      username: 'user.netflix@email.com',
+      password: 'Stream2024!',
+      url: 'https://netflix.com',
+      notes: 'Family streaming account'
+    },
+    {
+      id: 'pwd002',
+      name: 'GitHub Repository',
+      username: 'developer_pro',
+      password: 'Code#Secure456',
+      url: 'https://github.com',
+      notes: 'Development projects repository'
+    },
+    {
+      id: 'pwd003',
+      name: 'Cloud Storage',
+      username: 'cloud.user.2024',
+      password: 'Storage&Safe789',
+      url: 'https://drive.google.com',
+      notes: 'Personal file backup service'
     }
-  };
-
-  const handleEditTodo = (todo: any) => {
-    setEditTodo(todo);
-    setShowTodoModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowTodoModal(false);
-    setEditTodo(null);
-    setTodoProjectId('');
-  };
-
-  const handleAddTodo = (projectId?: string) => {
-    if (projectId) {
-      setTodoProjectId(projectId);
+  ],
+  habits: [],
+  habitLegend: {
+    completed: { icon: '✓', label: 'Completed', color: '#10B981' },
+    partial: { icon: '◐', label: 'Partial', color: '#F59E0B' },
+    missed: { icon: '✗', label: 'Missed', color: '#EF4444' },
+    notScheduled: { icon: '−', label: 'Not Scheduled', color: '#6B7280' },
+  },
+  financialAccounts: [
+    { id: 'acc001', name: 'Primary Checking', type: 'checking', balance: 4850.32 },
+    { id: 'acc002', name: 'High Yield Savings', type: 'savings', balance: 18750.00 },
+    { id: 'acc003', name: 'Retirement 401k', type: 'investment', balance: 45200.85 }
+  ],
+  financialTransactions: [
+    {
+      id: 'txn001',
+      description: 'Freelance Web Design',
+      amount: 2800,
+      type: 'income',
+      category: 'Freelance',
+      date: new Date(2024, 11, 5),
+      accountId: 'acc001'
+    },
+    {
+      id: 'txn002',
+      description: 'Monthly Rent Payment',
+      amount: 1450.00,
+      type: 'expense',
+      category: 'Housing',
+      date: new Date(2024, 11, 1),
+      accountId: 'acc001'
+    },
+    {
+      id: 'txn003',
+      description: 'Investment Dividend',
+      amount: 340.75,
+      type: 'income',
+      category: 'Investment',
+      date: new Date(2024, 11, 12),
+      accountId: 'acc003'
     }
-    setShowTodoModal(true);
-  };
+  ],
+  financialGoals: [
+    {
+      id: 'goal001',
+      name: 'Home Down Payment',
+      targetAmount: 50000,
+      currentAmount: 12500,
+      deadline: new Date(2026, 5, 30),
+      weeklyContribution: 400
+    },
+    {
+      id: 'goal002',
+      name: 'European Trip',
+      targetAmount: 8000,
+      currentAmount: 2400,
+      deadline: new Date(2025, 7, 15),
+      weeklyContribution: 125
+    },
+    {
+      id: 'goal003',
+      name: 'Professional Camera',
+      targetAmount: 3500,
+      currentAmount: 950,
+      deadline: new Date(2025, 3, 20),
+      weeklyContribution: 85
+    }
+  ],
+  healthScores: []
+};
 
-  const moveTaskToProject = (taskId: string, newProjectId: string) => {
-    const todo = state.todos.find(t => t.id === taskId);
-    if (todo && todo.projectId !== newProjectId) {
-      // Get the highest position in the target project
-      const targetProjectTodos = state.todos.filter(t => t.projectId === newProjectId);
-      const newPosition = targetProjectTodos.length;
-      
+const DataContext = createContext<{
+  state: AppState;
+  dispatch: React.Dispatch<Action>;
+}>({
+  state: initialState,
+  dispatch: () => null,
+});
+
+function reducer(state: AppState, action: Action): AppState {
+  switch (action.type) {
+    case 'ADD_EVENT':
+      return { ...state, events: [...state.events, action.payload] };
+    case 'UPDATE_EVENT':
+      return {
+        ...state,
+        events: state.events.map(event =>
+          event.id === action.payload.id ? action.payload : event
+        ),
+      };
+    case 'ADD_TODO':
+      return { ...state, todos: [...state.todos, action.payload] };
+    case 'UPDATE_TODO':
+      return {
+        ...state,
+        todos: state.todos.map(todo =>
+          todo.id === action.payload.id ? action.payload : todo
+        ),
+      };
+    case 'DELETE_TODO':
+      return {
+        ...state,
+        todos: state.todos.filter(todo => todo.id !== action.payload),
+      };
+    case 'REORDER_TODOS':
+      return {
+        ...state,
+        todos: state.todos.map(todo => {
+          const updatedTodo = action.payload.todos.find(t => t.id === todo.id);
+          return updatedTodo || todo;
+        }),
+      };
+    case 'MOVE_TODO_TO_PROJECT':
+      return {
+        ...state,
+        todos: state.todos.map(todo => {
+          if (todo.id === action.payload.todoId) {
+            return { ...todo, projectId: action.payload.newProjectId, position: action.payload.newPosition };
+          }
+          // Adjust positions of other todos in the target project
+          if (todo.projectId === action.payload.newProjectId && todo.position >= action.payload.newPosition) {
+            return { ...todo, position: todo.position + 1 };
+          }
+          return todo;
+        }),
+      };
+    case 'ADD_PROJECT':
+      return { ...state, projects: [...state.projects, action.payload] };
+    case 'UPDATE_PROJECT':
+      return {
+        ...state,
+        projects: state.projects.map(project =>
+          project.id === action.payload.id ? action.payload : project
+        ),
+      };
+    case 'DELETE_PROJECT':
+      return {
+        ...state,
+        projects: state.projects.filter(project => project.id !== action.payload),
+        // Move todos from deleted project to default project
+        todos: state.todos.map(todo =>
+          todo.projectId === action.payload
+            ? { ...todo, projectId: 'work' }
+            : todo
+        ),
+      };
+    case 'SET_DAILY_PLAN':
+      return {
+        ...state,
+        dailyPlans: {
+          ...state.dailyPlans,
+          [action.payload.date]: action.payload.items,
+        },
+      };
+    case 'SET_HABIT':
+      return {
+        ...state,
+        habits: [
+          ...state.habits.filter(h => h.id !== action.payload.id),
+          action.payload,
+        ],
+      };
+    case 'SET_HEALTH_SCORE':
+      return {
+        ...state,
+        healthScores: [
+          ...state.healthScores.filter(s => s.id !== action.payload.id),
+          action.payload,
+        ],
+      };
+    default:
+      return state;
+  }
+}
+
+export function DataProvider({ children }: { children: ReactNode }) {
+  const [state, dispatch] = useReducer(reducer, initialState);
+
+  useEffect(() => {
+    if (state.events.length === 0 && state.todos.length === 0) {
+      const now = new Date();
+      const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
+      const dateKey = now.toISOString().split('T')[0];
+
+      // Sample Events
       dispatch({
-        type: 'MOVE_TODO_TO_PROJECT',
-        payload: { todoId: taskId, newProjectId, newPosition }
+        type: 'ADD_EVENT',
+        payload: {
+          id: 'event001',
+          title: 'Client Strategy Session',
+          description: 'Quarterly business review and planning',
+          start: now,
+          end: oneHourLater,
+          color: '#10B981',
+          location: 'Executive Boardroom',
+          guests: ['client@company.com', 'manager@company.com'],
+          meetLink: 'https://meet.google.com/xyz-abcd-efg',
+        },
+      });
+
+      dispatch({
+        type: 'ADD_EVENT',
+        payload: {
+          id: 'event002',
+          title: 'Product Demo Workshop',
+          description: 'Showcase new features to development team',
+          start: new Date(now.getTime() + 2 * 60 * 60 * 1000),
+          end: new Date(now.getTime() + 3 * 60 * 60 * 1000),
+          color: '#F59E0B',
+          location: 'Innovation Lab',
+          guests: ['dev.team@company.com'],
+        },
+      });
+
+      dispatch({
+        type: 'ADD_EVENT',
+        payload: {
+          id: 'event003',
+          title: 'Design Review Meeting',
+          description: 'Review UI/UX mockups for mobile app',
+          start: new Date(now.getTime() + 4 * 60 * 60 * 1000),
+          end: new Date(now.getTime() + 5 * 60 * 60 * 1000),
+          color: '#8B5CF6',
+          location: 'Design Studio',
+          guests: ['design@company.com', 'product@company.com'],
+        },
+      });
+
+      // Sample Todos
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo001',
+          title: 'Complete API documentation',
+          description: 'Write comprehensive docs for new REST endpoints',
+          completed: false,
+          priority: 'high',
+          projectId: 'work',
+          dueDate: now,
+          createdAt: new Date(),
+          duration: 240,
+          position: 0,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo002',
+          title: 'Database optimization',
+          description: 'Improve query performance for user dashboard',
+          completed: false,
+          priority: 'high',
+          projectId: 'work',
+          dueDate: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 180,
+          position: 1,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo003',
+          title: 'Security audit review',
+          description: 'Address vulnerabilities found in latest scan',
+          completed: false,
+          priority: 'medium',
+          projectId: 'work',
+          dueDate: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 120,
+          position: 2,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo004',
+          title: 'Plan weekend hiking trip',
+          description: 'Research trails and book camping reservations',
+          completed: false,
+          priority: 'medium',
+          projectId: 'personal',
+          dueDate: now,
+          createdAt: new Date(),
+          duration: 60,
+          position: 0,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo005',
+          title: 'Organize photo collection',
+          description: 'Sort and backup vacation photos from last year',
+          completed: false,
+          priority: 'low',
+          projectId: 'personal',
+          dueDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 90,
+          position: 1,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo006',
+          title: 'Update personal website',
+          description: 'Add recent projects and refresh portfolio',
+          completed: false,
+          priority: 'medium',
+          projectId: 'personal',
+          dueDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 150,
+          position: 2,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo007',
+          title: 'Join yoga classes',
+          description: 'Research local studios and sign up for beginner course',
+          completed: false,
+          priority: 'high',
+          projectId: 'health',
+          dueDate: now,
+          createdAt: new Date(),
+          duration: 30,
+          position: 0,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo008',
+          title: 'Schedule annual checkup',
+          description: 'Book appointments with doctor and dentist',
+          completed: false,
+          priority: 'medium',
+          projectId: 'health',
+          dueDate: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 20,
+          position: 1,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo009',
+          title: 'Start meditation practice',
+          description: 'Download app and commit to 10 minutes daily',
+          completed: false,
+          priority: 'low',
+          projectId: 'health',
+          dueDate: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 15,
+          position: 2,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo010',
+          title: 'Set up automatic savings',
+          description: 'Configure monthly transfer to emergency fund',
+          completed: false,
+          priority: 'high',
+          projectId: 'finance',
+          dueDate: new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 45,
+          position: 0,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo011',
+          title: 'Research investment options',
+          description: 'Compare index funds vs individual stocks',
+          completed: false,
+          priority: 'medium',
+          projectId: 'finance',
+          dueDate: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 90,
+          position: 1,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo012',
+          title: 'Update budget spreadsheet',
+          description: 'Track expenses and adjust monthly budget',
+          completed: false,
+          priority: 'low',
+          projectId: 'finance',
+          dueDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 60,
+          position: 2,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo013',
+          title: 'Learn TypeScript fundamentals',
+          description: 'Complete online course on advanced TypeScript',
+          completed: false,
+          priority: 'high',
+          projectId: 'learning',
+          dueDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 180,
+          position: 0,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo014',
+          title: 'Read design patterns book',
+          description: 'Study software architecture best practices',
+          completed: false,
+          priority: 'medium',
+          projectId: 'learning',
+          dueDate: new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 45,
+          position: 1,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo015',
+          title: 'Practice algorithm problems',
+          description: 'Solve 5 coding challenges on LeetCode',
+          completed: false,
+          priority: 'low',
+          projectId: 'learning',
+          dueDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 120,
+          position: 2,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo016',
+          title: 'Install smart thermostat',
+          description: 'Replace old thermostat with programmable model',
+          completed: false,
+          priority: 'medium',
+          projectId: 'home',
+          dueDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 120,
+          position: 0,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo017',
+          title: 'Deep clean garage',
+          description: 'Organize tools and donate unused items',
+          completed: false,
+          priority: 'low',
+          projectId: 'home',
+          dueDate: new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 240,
+          position: 1,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo018',
+          title: 'Plan garden renovation',
+          description: 'Design layout and order plants for spring',
+          completed: false,
+          priority: 'high',
+          projectId: 'home',
+          dueDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 90,
+          position: 2,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo019',
+          title: 'Create digital art series',
+          description: 'Design 5 illustrations for portfolio',
+          completed: false,
+          priority: 'high',
+          projectId: 'creative',
+          dueDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 300,
+          position: 0,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo020',
+          title: 'Write short story',
+          description: 'Complete first draft of science fiction story',
+          completed: false,
+          priority: 'medium',
+          projectId: 'creative',
+          dueDate: new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 180,
+          position: 1,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo021',
+          title: 'Learn guitar basics',
+          description: 'Practice chords and simple songs',
+          completed: false,
+          priority: 'low',
+          projectId: 'creative',
+          dueDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 60,
+          position: 2,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo022',
+          title: 'Research Japan itinerary',
+          description: 'Plan 2-week trip including hotels and activities',
+          completed: false,
+          priority: 'medium',
+          projectId: 'travel',
+          dueDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 120,
+          position: 0,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo023',
+          title: 'Apply for travel visa',
+          description: 'Submit documents for international travel',
+          completed: false,
+          priority: 'high',
+          projectId: 'travel',
+          dueDate: new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 90,
+          position: 1,
+        },
+      });
+
+      dispatch({
+        type: 'ADD_TODO',
+        payload: {
+          id: 'todo024',
+          title: 'Book travel insurance',
+          description: 'Compare policies and purchase coverage',
+          completed: false,
+          priority: 'low',
+          projectId: 'travel',
+          dueDate: new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000),
+          createdAt: new Date(),
+          duration: 45,
+          position: 2,
+        },
+      });
+
+      // Sample Daily Plan
+      dispatch({
+        type: 'SET_DAILY_PLAN',
+        payload: {
+          date: dateKey,
+          items: [
+            {
+              id: 'plan001',
+              title: 'Client Strategy Session',
+              description: 'Quarterly business review and planning',
+              type: 'event',
+              start: now,
+              end: oneHourLater,
+              originalId: 'event001',
+              completed: false,
+              location: 'Executive Boardroom',
+              guests: ['client@company.com', 'manager@company.com'],
+              meetLink: 'https://meet.google.com/xyz-abcd-efg',
+            },
+          ],
+        },
       });
     }
-  };
-
-  const reorderTodosInProject = (projectId: string, reorderedTodos: any[]) => {
-    const updatedTodos = reorderedTodos.map((todo, index) => ({
-      ...todo,
-      position: index
-    }));
-    
-    dispatch({
-      type: 'REORDER_TODOS',
-      payload: { projectId, todos: updatedTodos }
-    });
-  };
-
-  const handleDragEnd = (event: any) => {
-    const { active, over } = event;
-    
-    if (!over) return;
-    
-    const activeId = active.id;
-    const overId = over.id;
-    
-    // Check if we're dropping on a project column
-    if (overId.startsWith('project-')) {
-      const newProjectId = overId.replace('project-', '');
-      const draggedTodo = state.todos.find(t => t.id === activeId);
-      
-      if (draggedTodo && draggedTodo.projectId !== newProjectId) {
-        moveTaskToProject(activeId, newProjectId);
-      }
-    }
-    
-    // Handle reordering within the same project
-    if (activeId !== overId) {
-      const activeItem = state.todos.find(t => t.id === activeId);
-      const overItem = state.todos.find(t => t.id === overId);
-      
-      if (activeItem && overItem && activeItem.projectId === overItem.projectId) {
-        const projectTodos = state.todos
-          .filter(t => t.projectId === activeItem.projectId)
-          .sort((a, b) => (a.position || 0) - (b.position || 0));
-        
-        const oldIndex = projectTodos.findIndex(t => t.id === activeId);
-        const newIndex = projectTodos.findIndex(t => t.id === overId);
-        
-        const reorderedTodos = [...projectTodos];
-        const [removed] = reorderedTodos.splice(oldIndex, 1);
-        reorderedTodos.splice(newIndex, 0, removed);
-        
-        reorderTodosInProject(activeItem.projectId, reorderedTodos);
-      }
-    }
-  };
-
-  const deleteTodo = (todoId: string) => {
-    if (confirm('Are you sure you want to delete this task?')) {
-      dispatch({ type: 'DELETE_TODO', payload: todoId });
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'text-red-500 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700/50';
-      case 'medium': return 'text-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-700/50';
-      default: return 'text-green-500 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700/50';
-    }
-  };
-
-  const getProjectName = (projectId?: string) => {
-    return state.projects.find(p => p.id === projectId)?.name || 'No Project';
-  };
-
-  const renderKanbanView = () => {
-    const projectColumns = state.projects.map(project => ({
-      ...project,
-      todos: filteredTodos
-        .filter(todo => todo.projectId === project.id)
-        .sort((a, b) => (a.position || 0) - (b.position || 0))
-    }));
-
-    return (
-      <DragDropProvider onDragEnd={handleDragEnd}>
-        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6">
-          <div className="flex space-x-6 overflow-x-auto pb-4">
-            {projectColumns.map(project => (
-              <ProjectColumn 
-                key={project.id} 
-                project={project} 
-                onToggleTodo={toggleTodo}
-                onEditTodo={handleEditTodo}
-                onDeleteTodo={deleteTodo}
-                getPriorityColor={getPriorityColor}
-                onAddTodo={handleAddTodo}
-              />
-            ))}
-          </div>
-        </div>
-      </DragDropProvider>
-    );
-  };
+  }, []);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <CheckSquare className="w-8 h-8 text-primary-500" />
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">
-            To-Do Lists
-          </h1>
-        </div>
-
-        <div className="flex items-center space-x-3">
-          <a
-            href="/completed-tasks"
-            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-          >
-            <CheckSquare className="w-4 h-4" />
-            <span>Completed Tasks</span>
-          </a>
-          
-          <button 
-            onClick={() => setShowProjectModal(true)}
-            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-          >
-            <FolderPlus className="w-4 h-4" />
-            <span>Projects</span>
-          </button>
-          
-          <button 
-            onClick={() => handleAddTodo()}
-            className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg hover:from-primary-600 hover:to-accent-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New Task</span>
-          </button>
-        </div>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4 border border-blue-200 dark:border-blue-700/50">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Active Tasks</p>
-              <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">{kpis.totalTodos}</p>
-            </div>
-            <CheckSquare className="w-8 h-8 text-blue-500" />
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4 border border-green-200 dark:border-green-700/50">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-green-600 dark:text-green-400">Completed</p>
-              <p className="text-2xl font-bold text-green-900 dark:text-green-100">{kpis.completedTodos}</p>
-            </div>
-            <CheckSquare className="w-8 h-8 text-green-500" />
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 rounded-xl p-4 border border-red-200 dark:border-red-700/50">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-red-600 dark:text-red-400">Overdue</p>
-              <p className="text-2xl font-bold text-red-900 dark:text-red-100">{kpis.overdueTodos}</p>
-            </div>
-            <Calendar className="w-8 h-8 text-red-500" />
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-xl p-4 border border-orange-200 dark:border-orange-700/50">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-orange-600 dark:text-orange-400">High Priority</p>
-              <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">{kpis.highPriorityTodos}</p>
-            </div>
-            <Target className="w-8 h-8 text-orange-500" />
-          </div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Filter Tasks
-          </h3>
-                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-              }`}
-            >
-              {showCompleted ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-            </button>
-            <span className="text-sm text-gray-700 dark:text-gray-300">
-              {showCompleted ? 'Hide' : 'Show'} completed
-            </span>
-          </label>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="search"
-              placeholder="Search tasks..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            />
-          </div>
-
-          {/* Project Filter */}
-          <select
-            value={filterProject}
-            onChange={(e) => setFilterProject(e.target.value)}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          >
-            <option value="">All Projects</option>
-            {state.projects.map(project => (
-              <option key={project.id} value={project.id}>{project.name}</option>
-            ))}
-          </select>
-
-          {/* Priority Filter */}
-          <select
-            value={filterPriority}
-            onChange={(e) => setFilterPriority(e.target.value)}
-            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          >
-            <option value="">All Priorities</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Content */}
-      {renderKanbanView()}
-
-      {showTodoModal && (
-        <TodoModal
-          currentDate={new Date()}
-          onClose={handleCloseModal}
-          editTodo={editTodo}
-          defaultProjectId={todoProjectId}
-        />
-      )}
-
-      {showProjectModal && (
-        <ProjectModal onClose={() => setShowProjectModal(false)} />
-      )}
-    </div>
+    <DataContext.Provider value={{ state, dispatch }}>
+      {children}
+    </DataContext.Provider>
   );
 }
 
-// Draggable Todo Item Component
-function DraggableTodoItem({ 
-  todo, 
-  onToggle, 
-  onEdit, 
-  onDelete,
-  getPriorityColor,
-  index
-}: { 
-  todo: any; 
-  onToggle: (id: string) => void; 
-  onEdit: (todo: any) => void;
-  onDelete: (id: string) => void;
-  getPriorityColor: (priority: string) => string;
-  index: number;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: todo.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  // Calculate display date/duration
-  const getDisplayInfo = () => {
-    if (todo.limitDate) {
-      return format(new Date(todo.limitDate), 'MMM d');
-    }
-    if (todo.dueDate) {
-      return format(new Date(todo.dueDate), 'MMM d');
-    }
-    if (todo.duration) {
-      return todo.duration >= 60 ? `${Math.floor(todo.duration / 60)}h${todo.duration % 60 > 0 ? ` ${todo.duration % 60}m` : ''}` : `${todo.duration}m`;
-    }
-    return '';
-  };
-
-  const getPriorityIndicator = () => {
-    const colors = {
-      high: '#EF4444',
-      medium: '#F59E0B', 
-      low: '#10B981'
-    };
-    return colors[todo.priority as keyof typeof colors] || 'transparent';
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={`bg-white dark:bg-gray-700 rounded-md p-2 shadow-sm border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all duration-200 cursor-move group ${
-        isDragging ? 'opacity-50 scale-95' : ''
-      }`}
-    >
-      <div className="flex items-center space-x-2">
-        {/* Priority Indicator */}
-        <div 
-          className="w-1 h-4 rounded-full flex-shrink-0"
-          style={{ backgroundColor: getPriorityIndicator() }}
-        />
-        
-        <button
-          onClick={() => onToggle(todo.id)}
-          className={`w-3 h-3 rounded border transition-all duration-200 flex-shrink-0 ${
-            todo.completed
-              ? 'bg-green-500 border-green-500'
-              : 'border-gray-300 dark:border-gray-500 hover:border-primary-500'
-          }`}
-        >
-        </button>
-        
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between">
-            <h4 
-              className={`font-medium text-xs cursor-pointer hover:text-primary-600 truncate ${
-                todo.completed 
-                  ? 'line-through text-gray-500 dark:text-gray-400' 
-                  : 'text-gray-900 dark:text-white'
-              }`}
-              onDoubleClick={() => onEdit(todo)}
-              title={todo.title}
-            >
-              {todo.title}
-            </h4>
-            
-            <div className="flex items-center space-x-1 flex-shrink-0">
-              {getDisplayInfo() && (
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {getDisplayInfo()}
-                </span>
-              )}
-              
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(todo.id);
-                }}
-                className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-gray-400 hover:text-red-500 p-0.5"
-                title="Delete task"
-              >
-                <Trash2 className="w-3 h-3" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Project Column Component with Drop Zone
-function ProjectColumn({ 
-  project, 
-  onToggleTodo, 
-  onEditTodo, 
-  onDeleteTodo,
-  getPriorityColor,
-  onAddTodo
-}: { 
-  project: any; 
-  onToggleTodo: (id: string) => void; 
-  onEditTodo: (todo: any) => void;
-  onDeleteTodo: (todoId: string) => void;
-  getPriorityColor: (priority: string) => string;
-  onAddTodo: (projectId: string) => void;
-}) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: `project-${project.id}`,
-  });
-
-  return (
-    <div className="flex-shrink-0 w-64">
-      <div 
-        ref={setNodeRef}
-        className={`bg-gradient-to-r from-primary-50 to-accent-50 dark:from-primary-900/20 dark:to-accent-900/20 rounded-lg p-3 border border-primary-200 dark:border-primary-700/50 transition-all duration-200 ${
-          isOver ? 'ring-2 ring-primary-400 bg-primary-100 dark:bg-primary-800/30' : ''
-        }`}
-      >
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center">
-            <Folder className="w-4 h-4 mr-1 text-primary-500" />
-            {project.name}
-          </h3>
-          <div className="flex items-center space-x-1">
-            <button
-              onClick={() => onAddTodo(project.id)}
-              className="w-5 h-5 bg-primary-500 hover:bg-primary-600 text-white rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
-              title="Add task to this project"
-            >
-              <Plus className="w-3 h-3" />
-            </button>
-            <span className="bg-primary-100 dark:bg-primary-800 text-primary-700 dark:text-primary-200 px-1.5 py-0.5 rounded-full text-xs font-medium">
-              {project.todos.length}
-            </span>
-          </div>
-        </div>
-        
-        <div className="space-y-1 max-h-80 overflow-y-auto">
-          {project.todos.map((todo, index) => (
-            <DraggableTodoItem
-              key={todo.id}
-              todo={todo}
-              index={index}
-              onToggle={onToggleTodo}
-              onEdit={onEditTodo}
-              onDelete={onDeleteTodo}
-              getPriorityColor={getPriorityColor}
-            />
-          ))}
-          
-          {project.todos.length === 0 && (
-            <div className="text-center py-6 text-gray-500 dark:text-gray-400">
-              <CheckSquare className="w-6 h-6 mx-auto mb-1 opacity-50" />
-              <p className="text-xs">No tasks</p>
-              {isOver && (
-                <p className="text-xs text-primary-600 dark:text-primary-400 mt-1">
-                  Drop here
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+export function useData() {
+  return useContext(DataContext);
 }
