@@ -163,7 +163,14 @@ export default function TodoList() {
   };
 
   const renderKanbanView = () => {
-    const projectColumns = state.projects.map(project => ({
+    // Ensure Unclassified is always first, then sort others
+    const sortedProjects = [...state.projects].sort((a, b) => {
+      if (a.id === 'unclassified') return -1;
+      if (b.id === 'unclassified') return 1;
+      return 0;
+    });
+    
+    const projectColumns = sortedProjects.map(project => ({
       ...project,
       todos: filteredTodos
         .filter(todo => todo.projectId === project.id)
@@ -494,28 +501,36 @@ function ProjectColumn({
     id: `project-${project.id}`,
   });
 
+  // Special styling for Unclassified project
+  const isUnclassified = project.id === 'unclassified';
+  const backgroundClass = isUnclassified 
+    ? 'bg-gray-200 dark:bg-gray-700' 
+    : 'bg-gradient-to-r from-primary-50 to-accent-50 dark:from-primary-900/20 dark:to-accent-900/20';
+  const borderClass = isUnclassified
+    ? 'border-gray-400 dark:border-gray-600'
+    : 'border-primary-200 dark:border-primary-700/50';
   return (
     <div className="flex-shrink-0 w-64">
       <div 
         ref={setNodeRef}
-        className={`bg-gradient-to-r from-primary-50 to-accent-50 dark:from-primary-900/20 dark:to-accent-900/20 rounded-lg p-3 border border-primary-200 dark:border-primary-700/50 transition-all duration-200 ${
+        className={`${backgroundClass} rounded-lg p-3 border ${borderClass} transition-all duration-200 ${
           isOver ? 'ring-2 ring-primary-400 bg-primary-100 dark:bg-primary-800/30' : ''
         }`}
       >
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center">
-            <Folder className="w-4 h-4 mr-1 text-primary-500" />
+            <Folder className={`w-4 h-4 mr-1 ${isUnclassified ? 'text-gray-500' : 'text-primary-500'}`} />
             {project.name}
           </h3>
           <div className="flex items-center space-x-1">
             <button
               onClick={() => onAddTodo(project.id)}
-              className="w-5 h-5 bg-primary-500 hover:bg-primary-600 text-white rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
+              className={`w-5 h-5 ${isUnclassified ? 'bg-gray-500 hover:bg-gray-600' : 'bg-primary-500 hover:bg-primary-600'} text-white rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110`}
               title="Add task to this project"
             >
               <Plus className="w-3 h-3" />
             </button>
-            <span className="bg-primary-100 dark:bg-primary-800 text-primary-700 dark:text-primary-200 px-1.5 py-0.5 rounded-full text-xs font-medium">
+            <span className={`${isUnclassified ? 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200' : 'bg-primary-100 dark:bg-primary-800 text-primary-700 dark:text-primary-200'} px-1.5 py-0.5 rounded-full text-xs font-medium`}>
               {project.todos.length}
             </span>
           </div>
