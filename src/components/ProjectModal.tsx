@@ -130,7 +130,7 @@ export default function ProjectModal({ onClose }: ProjectModalProps) {
                     <Edit3 className="w-4 h-4" />
                   </button>
                   
-                  {project.id !== 'unclassified' && (
+                  {project.id !== 'default' && (
                     <button
                       onClick={() => handleDeleteProject(project.id)}
                       className="p-2 text-gray-400 hover:text-red-500 transition-colors duration-200"
