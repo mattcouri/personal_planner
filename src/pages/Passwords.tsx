@@ -15,6 +15,12 @@ export default function Passwords() {
     password.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Update dummy data to include PIN field
+  const passwordsWithPin = filteredPasswords.map(password => ({
+    ...password,
+    pin: password.pin || (password.id === 'pwd001' ? '1234' : password.id === 'pwd002' ? '5678' : '')
+  }));
+
   const togglePasswordVisibility = (id: string) => {
     const newVisible = new Set(visiblePasswords);
     if (newVisible.has(id)) {
@@ -85,20 +91,21 @@ export default function Passwords() {
       <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50">
         {/* Table Header */}
         <div className="px-6 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 rounded-t-xl">
-          <div className="grid grid-cols-12 gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+          <div className="grid grid-cols-14 gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
             <div className="col-span-3">Account Name</div>
             <div className="col-span-3">Username</div>
-            <div className="col-span-4">Password</div>
-            <div className="col-span-2">Actions</div>
+            <div className="col-span-3">Password</div>
+            <div className="col-span-2">PIN</div>
+            <div className="col-span-3">Actions</div>
           </div>
         </div>
 
         {/* Password Rows */}
-        {filteredPasswords.length > 0 ? (
+        {passwordsWithPin.length > 0 ? (
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {filteredPasswords.map(password => (
+            {passwordsWithPin.map(password => (
               <div key={password.id} className="px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-all duration-200">
-                <div className="grid grid-cols-12 gap-4 items-center">
+                <div className="grid grid-cols-14 gap-4 items-center">
                   {/* Account Name */}
                   <div className="col-span-3">
                     <div className="flex items-center space-x-2">
@@ -140,7 +147,7 @@ export default function Passwords() {
                   </div>
 
                   {/* Password */}
-                  <div className="col-span-4">
+                  <div className="col-span-3">
                     <div className="flex items-center space-x-2">
                       <span className="text-sm text-gray-900 dark:text-white font-mono flex-1 truncate">
                         {visiblePasswords.has(password.id) 
@@ -161,7 +168,7 @@ export default function Passwords() {
                       </button>
                       <button
                         onClick={() => copyToClipboard(password.password)}
-                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200 flex-shrink-0"
+                          {password.description || password.notes}
                         title="Copy password"
                       >
                         <Copy className="w-3 h-3" />
@@ -169,8 +176,44 @@ export default function Passwords() {
                     </div>
                   </div>
 
-                  {/* Actions */}
+                  {/* PIN */}
                   <div className="col-span-2">
+                    <div className="flex items-center space-x-2">
+                      {password.pin ? (
+                        <>
+                          <span className="text-sm text-gray-900 dark:text-white font-mono flex-1 truncate">
+                            {visiblePasswords.has(password.id + '-pin') 
+                              ? password.pin 
+                              : '●'.repeat(Math.min(password.pin.length, 6))
+                            }
+                          </span>
+                          <button
+                            onClick={() => togglePasswordVisibility(password.id + '-pin')}
+                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200 flex-shrink-0"
+                            title={visiblePasswords.has(password.id + '-pin') ? "Hide PIN" : "Show PIN"}
+                          >
+                            {visiblePasswords.has(password.id + '-pin') ? (
+                              <EyeOff className="w-3 h-3" />
+                            ) : (
+                              <Eye className="w-3 h-3" />
+                            )}
+                          </button>
+                          <button
+                            onClick={() => copyToClipboard(password.pin)}
+                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200 flex-shrink-0"
+                            title="Copy PIN"
+                          >
+                            <Copy className="w-3 h-3" />
+                          </button>
+                        </>
+                      ) : (
+                        <span className="text-sm text-gray-400 dark:text-gray-500">-</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="col-span-3">
                     <div className="flex items-center space-x-1">
                       <button
                         onClick={() => handleEditPassword(password)}
@@ -292,6 +335,19 @@ function AddPasswordModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description
+            </label>
+            <textarea
+              rows={2}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="Additional notes or security questions..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Username/Email *
             </label>
             <input
@@ -329,6 +385,20 @@ function AddPasswordModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              PIN
+            </label>
+            <input
+              type="text"
+              value={formData.pin}
+              onChange={(e) => setFormData({ ...formData, pin: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white font-mono"
+              placeholder="Enter PIN (optional)"
+              maxLength={10}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Website URL
             </label>
             <input
@@ -337,19 +407,6 @@ function AddPasswordModal({
               onChange={(e) => setFormData({ ...formData, url: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               placeholder="https://example.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Notes
-            </label>
-            <textarea
-              rows={3}
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              placeholder="Additional notes or security questions..."
             />
           </div>
 
