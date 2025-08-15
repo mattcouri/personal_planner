@@ -346,7 +346,6 @@ export default function Health() {
           </div>
         </div>
       </div>
-
       {/* Health Dimensions Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {healthDimensions.sort((a, b) => a.position - b.position).map(dimension => {
