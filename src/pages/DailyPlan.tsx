@@ -7,14 +7,13 @@ import { restrictToWindowEdges } from '@dnd-kit/modifiers';
 import CalendarSidebar from '../components/CalendarSidebar';
 import TodoSidebar from '../components/TodoSidebar';
 import DailyPlanCenter from '../components/DailyPlanCenter';
-import QuickAddModal from '../components/QuickAddModal';
+import TodoModal from '../components/TodoModal';
 import { v4 as uuidv4 } from 'uuid';
 
 export default function DailyPlan() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showTodoModal, setShowTodoModal] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
-  const [editType, setEditType] = useState<'event' | 'todo' | 'plan'>('event');
   const [isAnimating, setIsAnimating] = useState(false);
   const [draggedItem, setDraggedItem] = useState<any>(null);
   const { state, dispatch } = useData();
@@ -48,14 +47,12 @@ export default function DailyPlan() {
 
   const handleEditItem = (item: any, type: 'plan') => {
     setEditItem(item);
-    setEditType(type);
-    setShowQuickAdd(true);
+    setShowTodoModal(true);
   };
 
   const handleCloseModal = () => {
-    setShowQuickAdd(false);
+    setShowTodoModal(false);
     setEditItem(null);
-    setEditType('event');
   };
 
   // Handle drag and drop events
@@ -203,11 +200,11 @@ export default function DailyPlan() {
             </div>
 
             <button
-              onClick={() => setShowQuickAdd(true)}
+              onClick={() => setShowTodoModal(true)}
               className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg hover:scale-105 shadow-lg transition-all duration-200"
             >
               <Plus className="w-4 h-4" />
-              <span>Quick Add</span>
+              <span>Add ToDo</span>
             </button>
           </div>
 
@@ -249,7 +246,7 @@ export default function DailyPlan() {
             <CalendarSidebar
               currentDate={currentDate}
               onDateChange={handleDateChange}
-              onQuickAdd={() => setShowQuickAdd(true)}
+              onAddTodo={() => setShowTodoModal(true)}
             />
           </div>
 
@@ -263,17 +260,16 @@ export default function DailyPlan() {
 
           {/* Right Sidebar - Todo Lists */}
           <div className="lg:col-span-1">
-            <TodoSidebar onQuickAdd={() => setShowQuickAdd(true)} />
+            <TodoSidebar onAddTodo={() => setShowTodoModal(true)} />
           </div>
         </div>
 
-        {/* Quick Add Modal */}
-        {showQuickAdd && (
-          <QuickAddModal
+        {/* ToDo Modal */}
+        {showTodoModal && (
+          <TodoModal
             currentDate={currentDate}
             onClose={handleCloseModal}
-            editItem={editItem}
-            editType={editType}
+            editTodo={editItem}
           />
         )}
       </div>

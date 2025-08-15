@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Plus, CheckSquare, Filter, Search, Folder, Calendar, Eye, EyeOff, FolderPlus, Trash2 } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 import { format } from 'date-fns';
-import QuickAddModal from '../components/QuickAddModal';
+import TodoModal from '../components/TodoModal';
 import ProjectModal from '../components/ProjectModal';
 import { useDroppable } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
@@ -15,10 +15,10 @@ export default function TodoList() {
   const [filterProject, setFilterProject] = useState<string>('');
   const [filterPriority, setFilterPriority] = useState<string>('');
   const [showCompleted, setShowCompleted] = useState(false);
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showTodoModal, setShowTodoModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [editTodo, setEditTodo] = useState<any>(null);
-  const [quickAddProjectId, setQuickAddProjectId] = useState<string>('');
+  const [todoProjectId, setTodoProjectId] = useState<string>('');
 
   // Filter todos (exclude completed ones - they go to separate page)
   const filteredTodos = state.todos.filter(todo => {
@@ -41,20 +41,20 @@ export default function TodoList() {
 
   const handleEditTodo = (todo: any) => {
     setEditTodo(todo);
-    setShowQuickAdd(true);
+    setShowTodoModal(true);
   };
 
   const handleCloseModal = () => {
-    setShowQuickAdd(false);
+    setShowTodoModal(false);
     setEditTodo(null);
-    setQuickAddProjectId('');
+    setTodoProjectId('');
   };
 
-  const handleQuickAdd = (projectId?: string) => {
+  const handleAddTodo = (projectId?: string) => {
     if (projectId) {
-      setQuickAddProjectId(projectId);
+      setTodoProjectId(projectId);
     }
-    setShowQuickAdd(true);
+    setShowTodoModal(true);
   };
 
   const moveTaskToProject = (taskId: string, newProjectId: string) => {
@@ -161,7 +161,7 @@ export default function TodoList() {
                 onEditTodo={handleEditTodo}
                 onDeleteTodo={deleteTodo}
                 getPriorityColor={getPriorityColor}
-                onQuickAdd={handleQuickAdd}
+                onAddTodo={handleAddTodo}
               />
             ))}
           </div>
@@ -199,7 +199,7 @@ export default function TodoList() {
           </a>
           
           <button 
-            onClick={() => handleQuickAdd()}
+            onClick={() => handleAddTodo()}
             className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg hover:from-primary-600 hover:to-accent-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
           >
             <Plus className="w-4 h-4" />
@@ -275,13 +275,12 @@ export default function TodoList() {
       {/* Content */}
       {renderKanbanView()}
 
-      {showQuickAdd && (
-        <QuickAddModal
+      {showTodoModal && (
+        <TodoModal
           currentDate={new Date()}
           onClose={handleCloseModal}
-          editItem={editTodo}
-          editType="todo"
-          defaultProjectId={quickAddProjectId}
+          editTodo={editTodo}
+          defaultProjectId={todoProjectId}
         />
       )}
 
@@ -399,14 +398,14 @@ function ProjectColumn({
   onEditTodo, 
   onDeleteTodo,
   getPriorityColor,
-  onQuickAdd
+  onAddTodo
 }: { 
   project: any; 
   onToggleTodo: (id: string) => void; 
   onEditTodo: (todo: any) => void;
   onDeleteTodo: (todoId: string) => void;
   getPriorityColor: (priority: string) => string;
-  onQuickAdd: (projectId: string) => void;
+  onAddTodo: (projectId: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: `project-${project.id}`,
@@ -427,7 +426,7 @@ function ProjectColumn({
           </h3>
           <div className="flex items-center space-x-2">
             <button
-              onClick={() => onQuickAdd(project.id)}
+              onClick={() => onAddTodo(project.id)}
               className="w-6 h-6 bg-primary-500 hover:bg-primary-600 text-white rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
               title="Add task to this project"
             >

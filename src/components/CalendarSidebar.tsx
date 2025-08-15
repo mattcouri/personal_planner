@@ -28,13 +28,13 @@ const isSameDay = (date1: Date, date2: Date) => {
 interface CalendarSidebarProps {
   currentDate: Date;
   onDateChange: (date: Date) => void;
-  onQuickAdd: () => void;
+  onAddTodo: () => void;
 }
 
 export default function CalendarSidebar({
   currentDate,
   onDateChange,
-  onQuickAdd,
+  onAddTodo,
 }: CalendarSidebarProps) {
   const { state } = useData();
 
@@ -63,7 +63,7 @@ export default function CalendarSidebar({
             Events
           </h2>
           <button
-            onClick={onQuickAdd}
+            onClick={onAddTodo}
             className="text-sm px-3 py-1 rounded-md bg-primary-500 text-white hover:bg-primary-600 transition-all duration-200"
           >
             <Plus className="w-4 h-4" />

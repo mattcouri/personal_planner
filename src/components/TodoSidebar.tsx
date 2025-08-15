@@ -5,10 +5,10 @@ import { useData } from '../contexts/DataContext';
 import { useDraggable } from '@dnd-kit/core';
 
 interface TodoSidebarProps {
-  onQuickAdd: () => void;
+  onAddTodo: () => void;
 }
 
-export default function TodoSidebar({ onQuickAdd }: TodoSidebarProps) {
+export default function TodoSidebar({ onAddTodo }: TodoSidebarProps) {
   const { state } = useData();
 
   // Show all incomplete todos
@@ -34,7 +34,7 @@ export default function TodoSidebar({ onQuickAdd }: TodoSidebarProps) {
               {allTodos.length} active
             </span>
             <button
-              onClick={onQuickAdd}
+              onClick={onAddTodo}
               className="text-sm px-3 py-1 rounded-md bg-primary-500 text-white hover:bg-primary-600 transition-all duration-200"
             >
               <Plus className="w-4 h-4" />
