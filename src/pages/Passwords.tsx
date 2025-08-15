@@ -235,10 +235,11 @@ function AddPasswordModal({
 }) {
   const [formData, setFormData] = useState({
     name: password?.name || '',
+    description: password?.description || '',
     username: password?.username || '',
     password: password?.password || '',
+    pin: password?.pin || '',
     url: password?.url || '',
-    notes: password?.notes || '',
   });
 
   const generatePassword = () => {
