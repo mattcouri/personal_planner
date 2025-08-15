@@ -89,25 +89,33 @@ export default function Passwords() {
 
       {/* Password List - Compact Design */}
       <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50">
-        {/* Table Header */}
-        <div className="px-6 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700 rounded-t-xl">
-          <div className="grid grid-cols-14 gap-4 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-            <div className="col-span-3">Account Name</div>
-            <div className="col-span-3">Username</div>
-            <div className="col-span-3">Password</div>
-            <div className="col-span-2">PIN</div>
-            <div className="col-span-3">Actions</div>
-          </div>
-        </div>
-
-        {/* Password Rows */}
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 dark:bg-gray-700/50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Account Name
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Username
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Password
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  PIN
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
         {passwordsWithPin.length > 0 ? (
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {passwordsWithPin.map(password => (
-              <div key={password.id} className="px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-all duration-200">
-                <div className="grid grid-cols-14 gap-4 items-center">
-                  {/* Account Name */}
-                  <div className="col-span-3">
+              <tr key={password.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-all duration-200">
+                {/* Account Name */}
+                <td className="px-6 py-4">
                     <div className="flex items-center space-x-2">
                       <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
                         {password.name}
@@ -125,13 +133,13 @@ export default function Passwords() {
                     </div>
                     {password.notes && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-1">
-                        {password.notes}
+                        {password.description || password.notes}
                       </p>
                     )}
-                  </div>
+                </td>
 
-                  {/* Username */}
-                  <div className="col-span-3">
+                {/* Username */}
+                <td className="px-4 py-4">
                     <div className="flex items-center space-x-2">
                       <span className="text-sm text-gray-900 dark:text-white font-mono truncate">
                         {password.username}
@@ -144,10 +152,10 @@ export default function Passwords() {
                         <Copy className="w-3 h-3" />
                       </button>
                     </div>
-                  </div>
+                </td>
 
-                  {/* Password */}
-                  <div className="col-span-3">
+                {/* Password */}
+                <td className="px-4 py-4">
                     <div className="flex items-center space-x-2">
                       <span className="text-sm text-gray-900 dark:text-white font-mono flex-1 truncate">
                         {visiblePasswords.has(password.id) 
@@ -172,10 +180,10 @@ export default function Passwords() {
                         <Copy className="w-3 h-3" />
                       </button>
                     </div>
-                  </div>
+                </td>
 
-                  {/* PIN */}
-                  <div className="col-span-2">
+                {/* PIN */}
+                <td className="px-4 py-4">
                     <div className="flex items-center space-x-2">
                       {password.pin ? (
                         <>
@@ -208,10 +216,10 @@ export default function Passwords() {
                         <span className="text-sm text-gray-400 dark:text-gray-500">-</span>
                       )}
                     </div>
-                  </div>
+                </td>
 
-                  {/* Actions */}
-                  <div className="col-span-3">
+                {/* Actions */}
+                <td className="px-6 py-4">
                     <div className="flex items-center space-x-1">
                       <button
                         onClick={() => handleEditPassword(password)}
@@ -226,13 +234,12 @@ export default function Passwords() {
                         Delete
                       </button>
                     </div>
-                  </div>
-                </div>
-              </div>
+                </td>
+              </tr>
             ))}
-          </div>
         ) : (
-          <div className="p-8 text-center">
+          <tr>
+            <td colSpan={5} className="p-8 text-center">
             <Shield className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
               No passwords stored
@@ -240,8 +247,12 @@ export default function Passwords() {
             <p className="text-gray-500 dark:text-gray-400">
               Add your first password to start managing your credentials securely.
             </p>
-          </div>
+            </td>
+          </tr>
         )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Add/Edit Password Modal */}
