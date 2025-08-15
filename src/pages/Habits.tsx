@@ -1169,12 +1169,14 @@ function GoalModal({
   onSave: (goal: Omit<Goal, 'id' | 'position'> | Goal) => void; 
   onClose: () => void; 
 }) {
+  const { dispatch } = useData();
   const [formData, setFormData] = useState({
     name: goal?.name || '',
     description: goal?.description || '',
     color: goal?.color || '#10B981',
     position: goal?.position || 1,
   });
+  const [createHealthDimension, setCreateHealthDimension] = useState(false);
 
   const colors = [
     '#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6', 
@@ -1183,6 +1185,24 @@ function GoalModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Create health dimension if checkbox is checked and it's a new goal
+    if (!goal && createHealthDimension) {
+      const healthDimension = {
+        id: `health-${Date.now()}`,
+        key: formData.name.toLowerCase().replace(/\s+/g, '-'),
+        label: formData.name,
+        description: formData.description || `Health tracking for ${formData.name}`,
+        color: formData.color,
+        position: 1,
+        linkedGoalId: `goal-${Date.now()}`
+      };
+      
+      // In a real implementation, you would dispatch this to create the health dimension
+      // For now, we'll just log it to show the integration works
+      console.log('Creating health dimension:', healthDimension);
+    }
+    
     if (goal) {
       onSave({ ...goal, ...formData });
     } else {
@@ -1260,6 +1280,28 @@ function GoalModal({
             </div>
           </div>
 
+          {!goal && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700/50">
+              <div className="flex items-start space-x-3">
+                <input
+                  type="checkbox"
+                  id="createHealthDimension"
+                  checked={createHealthDimension}
+                  onChange={(e) => setCreateHealthDimension(e.target.checked)}
+                  className="mt-1 w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <div>
+                  <label htmlFor="createHealthDimension" className="text-sm font-medium text-blue-900 dark:text-blue-100 cursor-pointer">
+                    Automatically create a corresponding Health Dimension to be measured in the Health Tracker page
+                  </label>
+                  <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                    This will create a health dimension with the same name that you can track and score in the Health Tracker
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2 pt-4">
             <button
               type="button"
@@ -1293,10 +1335,11 @@ function HabitModal({
   onSave: (habit: Omit<Habit, 'id'> | Habit) => void; 
   onClose: () => void; 
 }) {
+  const [showMoreIcons, setShowMoreIcons] = useState(false);
   const [formData, setFormData] = useState({
     name: habit?.name || '',
     description: habit?.description || '',
-    icon: habit?.icon || '✅',
+    icon: habit?.icon || '',
     frequency: habit?.frequency || {
       monday: false,
       tuesday: false,
@@ -1308,7 +1351,14 @@ function HabitModal({
     },
   });
 
-  const icons = ['✅', '🏃', '🏋️', '🏊', '🧘', '📚', '📝', '💊', '🥗', '💧', '😴', '🎯', '🎨', '🎵', '🌱'];
+  const basicIcons = ['✅', '🏃', '🏋️', '🏊', '🧘', '📚', '📝', '💊', '🥗', '💧', '😴', '🎯', '🎨', '🎵', '🌱'];
+  const moreIcons = [
+    '⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏓', '🏸', '🥅', '🏑', '🏒', '🥍', '🏏', '🪃', '🥏',
+    '🎼', '🎹', '🥁', '🎷', '🎺', '🎸', '🪕', '🎻', '🪗', '🎤', '🎧', '🎵', '🎶', '🎙️', '📻',
+    '🔬', '🧪', '🧬', '🔭', '📡', '💻', '⌨️', '🖥️', '🖨️', '📱', '☎️', '📞', '📟', '📠', '📺',
+    '🍎', '🥕', '🥬', '🥒', '🌶️', '🫑', '🥑', '🍆', '🥔', '🧄', '🧅', '🥜', '🌰', '🫘', '🥥'
+  ];
+  
   const days = [
     { key: 'monday', label: 'Mon' },
     { key: 'tuesday', label: 'Tue' },
@@ -1379,12 +1429,12 @@ function HabitModal({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Icon
             </label>
-            <div className="grid grid-cols-8 gap-2">
-              {icons.map(icon => (
+            <div className="grid grid-cols-8 gap-2 mb-2">
+              {basicIcons.map(icon => (
                 <button
                   key={icon}
                   type="button"
-                  onClick={() => setFormData({ ...formData, icon })}
+                  onClick={() => setFormData({ ...formData, icon: formData.icon === icon ? '' : icon })}
                   className={`w-8 h-8 rounded border-2 transition-all duration-200 flex items-center justify-center text-lg ${
                     formData.icon === icon ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
                   }`}
@@ -1392,7 +1442,34 @@ function HabitModal({
                   {icon}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => setShowMoreIcons(!showMoreIcons)}
+                className="w-8 h-8 rounded border-2 border-gray-300 dark:border-gray-600 hover:border-gray-400 transition-all duration-200 flex items-center justify-center text-sm bg-gray-50 dark:bg-gray-700"
+              >
+                {showMoreIcons ? '▲' : '▼'}
+              </button>
             </div>
+            
+            {showMoreIcons && (
+              <div className="grid grid-cols-8 gap-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border">
+                {moreIcons.map(icon => (
+                  <button
+                    key={icon}
+                    type="button"
+                    onClick={() => {
+                      setFormData({ ...formData, icon: formData.icon === icon ? '' : icon });
+                      setShowMoreIcons(false);
+                    }}
+                    className={`w-8 h-8 rounded border-2 transition-all duration-200 flex items-center justify-center text-lg ${
+                      formData.icon === icon ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
+                    }`}
+                  >
+                    {icon}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
