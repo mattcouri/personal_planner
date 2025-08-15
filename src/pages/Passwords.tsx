@@ -167,7 +167,6 @@ export default function Passwords() {
                         )}
                       </button>
                       <button
-                        onClick={() => copyToClipboard(password.password)}
                           {password.description || password.notes}
                         title="Copy password"
                       >
