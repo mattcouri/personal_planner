@@ -15,7 +15,6 @@ import Health from './pages/Health';
 import CompletedTasks from './pages/CompletedTasks';
 import HealthDimensionDetail from './pages/HealthDimensionDetail';
 import AuthCallback from './components/Auth/AuthCallback';
-import AuthCallback from './components/Auth/AuthCallback';
 
 function App() {
   return (
