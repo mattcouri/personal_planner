@@ -15,6 +15,7 @@ import Health from './pages/Health';
 import CompletedTasks from './pages/CompletedTasks';
 import HealthDimensionDetail from './pages/HealthDimensionDetail';
 import AuthCallback from './components/Auth/AuthCallback';
+import AuthCallback from './components/Auth/AuthCallback';
 
 function App() {
   return (
@@ -34,6 +35,7 @@ function App() {
                   <Route path="/health" element={<Health />} />
                   <Route path="/health/:dimensionId" element={<HealthDimensionDetail />} />
                   <Route path="/completed-tasks" element={<CompletedTasks />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
                 </Routes>
               </Layout>

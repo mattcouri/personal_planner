@@ -17,6 +17,7 @@ export interface AuthTokens {
 
 class GoogleAuthService {
   private config: AuthConfig;
+  private initialized: boolean = false;
 
   constructor() {
     this.config = {
@@ -49,6 +50,21 @@ class GoogleAuthService {
     this.config.clientSecret = clientSecret;
   }
 
+  // Initialize the service (can be called multiple times safely)
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+    
+    // Update config with current credentials
+    this.config.clientId = this.getClientId();
+    this.config.clientSecret = this.getClientSecret();
+    
+    if (!this.config.clientId) {
+      throw new Error('Google Client ID not configured. Please run the setup wizard first.');
+    }
+    
+    this.initialized = true;
+  }
+
   // Generate OAuth URL
   getAuthUrl(): string {
     if (!this.config.clientId) {
@@ -71,6 +87,8 @@ class GoogleAuthService {
   // Exchange authorization code for tokens
   async exchangeCodeForTokens(code: string): Promise<AuthTokens> {
     try {
+      await this.initialize();
+      
       if (!this.config.clientId || !this.config.clientSecret) {
         throw new Error('Google OAuth credentials not configured');
       }
@@ -104,6 +122,8 @@ class GoogleAuthService {
 
   // Refresh access token
   async refreshAccessToken(): Promise<AuthTokens> {
+    await this.initialize();
+    
     const refreshToken = this.getStoredRefreshToken();
     if (!refreshToken) {
       throw new Error('No refresh token available');
@@ -201,6 +221,7 @@ class GoogleAuthService {
   // Get user info
   async getUserInfo(): Promise<any> {
     try {
+      await this.initialize();
       const accessToken = await this.getValidAccessToken();
       const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
         headers: {
