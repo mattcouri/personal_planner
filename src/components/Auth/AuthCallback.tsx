@@ -28,8 +28,8 @@ const AuthCallback: React.FC = () => {
         // Exchange code for tokens
         await googleAuthService.exchangeCodeForTokens(code);
         
-        // Redirect to calendar with success
-        navigate('/calendar?auth=success');
+        // Redirect to calendar with success - force reload to trigger data loading
+        window.location.href = '/calendar?auth=success';
       } catch (error) {
         console.error('Auth callback error:', error);
         navigate('/calendar?auth=error');

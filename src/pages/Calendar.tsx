@@ -44,9 +44,13 @@ const Calendar: React.FC = () => {
     if (authParam === 'success') {
       setAuthMessage('Successfully connected to Google Calendar!');
       setTimeout(() => setAuthMessage(null), 5000);
+      // Clear the URL parameter to avoid repeated messages
+      window.history.replaceState({}, '', '/calendar');
     } else if (authParam === 'error') {
       setAuthMessage('Failed to connect to Google Calendar. Please try again.');
       setTimeout(() => setAuthMessage(null), 5000);
+      // Clear the URL parameter to avoid repeated messages
+      window.history.replaceState({}, '', '/calendar');
     }
   }, [searchParams]);
 
@@ -77,6 +81,8 @@ const Calendar: React.FC = () => {
         await googleAuthService.getValidAccessToken();
         console.log('✅ Valid access token obtained');
         setAuthStatus('authenticated');
+        // IMPORTANT: Actually load the calendar data after authentication
+        await loadCalendarData();
         await loadCalendarData();
       } catch (tokenError) {
         console.log('❌ Token validation failed:', tokenError);

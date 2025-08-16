@@ -110,7 +110,12 @@ class GoogleCalendarApiService {
   }
 
   async getTasks(taskListId: string): Promise<{ items: Task[] }> {
-    return this.makeRequest(`${this.tasksUrl}/lists/${taskListId}/tasks`);
+    console.log(`🔍 Making API request to get tasks for list: ${taskListId}`);
+    const url = `${this.tasksUrl}/lists/${taskListId}/tasks`;
+    console.log('📡 API URL:', url);
+    const result = await this.makeRequest(url);
+    console.log('✅ API Response:', result);
+    return result;
   }
 
   async createTask(taskListId: string, task: Partial<Task>): Promise<Task> {

@@ -86,9 +86,8 @@ const SchedulingTabs: React.FC = () => {
       console.log('✅ Event created successfully!');
       // TODO: Better to call a refresh function instead of page reload
       // For now, we'll use a small delay to let the API sync
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      // Instead of full page reload, just refresh the current page
+      window.location.href = '/calendar';
     } catch (error) {
       console.error('❌ Failed to create event:', error);
       alert('Failed to create event. Please try again.');
