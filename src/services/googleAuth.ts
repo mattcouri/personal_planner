@@ -20,8 +20,8 @@ class GoogleAuthService {
 
   constructor() {
     this.config = {
-      clientId: process.env.REACT_APP_GOOGLE_CLIENT_ID || '',
-      clientSecret: process.env.REACT_APP_GOOGLE_CLIENT_SECRET || '',
+      clientId: this.getClientId(),
+      clientSecret: this.getClientSecret(),
       redirectUri: `${window.location.origin}/auth/callback`,
       scopes: [
         'https://www.googleapis.com/auth/calendar',
@@ -33,8 +33,28 @@ class GoogleAuthService {
     };
   }
 
+  private getClientId(): string {
+    return localStorage.getItem('google_client_id') || 
+           process.env.REACT_APP_GOOGLE_CLIENT_ID || '';
+  }
+
+  private getClientSecret(): string {
+    return localStorage.getItem('google_client_secret') || 
+           process.env.REACT_APP_GOOGLE_CLIENT_SECRET || '';
+  }
+
+  // Update credentials dynamically
+  updateCredentials(clientId: string, clientSecret: string): void {
+    this.config.clientId = clientId;
+    this.config.clientSecret = clientSecret;
+  }
+
   // Generate OAuth URL
   getAuthUrl(): string {
+    if (!this.config.clientId) {
+      throw new Error('Google Client ID not configured');
+    }
+    
     const params = new URLSearchParams({
       client_id: this.config.clientId,
       redirect_uri: this.config.redirectUri,
@@ -51,6 +71,10 @@ class GoogleAuthService {
   // Exchange authorization code for tokens
   async exchangeCodeForTokens(code: string): Promise<AuthTokens> {
     try {
+      if (!this.config.clientId || !this.config.clientSecret) {
+        throw new Error('Google OAuth credentials not configured');
+      }
+      
       const response = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: {
@@ -83,6 +107,10 @@ class GoogleAuthService {
     const refreshToken = this.getStoredRefreshToken();
     if (!refreshToken) {
       throw new Error('No refresh token available');
+    }
+
+    if (!this.config.clientId || !this.config.clientSecret) {
+      throw new Error('Google OAuth credentials not configured');
     }
 
     try {
@@ -162,7 +190,7 @@ class GoogleAuthService {
   // Check if user is authenticated
   isAuthenticated(): boolean {
     const tokens = this.getStoredTokens();
-    return !!tokens?.access_token;
+    return !!tokens?.access_token && !!this.config.clientId;
   }
 
   // Sign out

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useCalendarStore } from '../stores/calendarStore';
 import { googleAuthService } from '../services/googleAuth';
 import { googleCalendarApi } from '../services/googleCalendarApi';
+import GoogleCalendarWizard from '../components/Setup/GoogleCalendarWizard';
 
 // Components
 import CalendarHeader from '../components/Calendar/CalendarHeader';
@@ -20,6 +21,8 @@ const Calendar: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [authStatus, setAuthStatus] = useState<'checking' | 'authenticated' | 'unauthenticated'>('checking');
   const [authMessage, setAuthMessage] = useState<string | null>(null);
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
+  const [hasCredentials, setHasCredentials] = useState(false);
   
   const {
     currentView,
@@ -35,6 +38,10 @@ const Calendar: React.FC = () => {
 
   useEffect(() => {
     checkAuthAndLoadData();
+    
+    // Check if credentials are configured
+    const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+    setHasCredentials(!!clientId);
     
     // Handle auth callback messages
     const authParam = searchParams.get('auth');
@@ -99,6 +106,22 @@ const Calendar: React.FC = () => {
     }
   };
 
+  const handleWizardComplete = (credentials: { clientId: string; clientSecret: string }) => {
+    // Store credentials in localStorage for this session
+    localStorage.setItem('google_client_id', credentials.clientId);
+    localStorage.setItem('google_client_secret', credentials.clientSecret);
+    
+    // Update auth service with new credentials
+    googleAuthService.updateCredentials(credentials.clientId, credentials.clientSecret);
+    
+    setHasCredentials(true);
+    setShowSetupWizard(false);
+    
+    // Show success message
+    setAuthMessage('Google Calendar credentials configured successfully! You can now connect your account.');
+    setTimeout(() => setAuthMessage(null), 5000);
+  };
+
   const renderCalendarView = () => {
     switch (currentView) {
       case 'month':
@@ -128,7 +151,7 @@ const Calendar: React.FC = () => {
     );
   }
 
-  if (authStatus === 'unauthenticated') {
+  if (authStatus === 'unauthenticated' || !hasCredentials) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         <div className="max-w-md w-full mx-4">
@@ -137,10 +160,28 @@ const Calendar: React.FC = () => {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
               Google Calendar Integration
             </h1>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">
-              Connect your Google Calendar to access all four scheduling types: Meetings, Events, Out of Office, and Appointment Schedules.
-            </p>
-            <AuthButton />
+            
+            {!hasCredentials ? (
+              <>
+                <p className="text-gray-600 dark:text-gray-300 mb-6">
+                  To get started, we need to set up Google Calendar integration. Our setup wizard will guide you through the process.
+                </p>
+                <button
+                  onClick={() => setShowSetupWizard(true)}
+                  className="w-full flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg hover:from-primary-600 hover:to-accent-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  <Settings className="w-5 h-5" />
+                  <span>Start Setup Wizard</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-gray-600 dark:text-gray-300 mb-6">
+                  Connect your Google Calendar to access all four scheduling types: Meetings, Events, Out of Office, and Appointment Schedules.
+                </p>
+                <AuthButton />
+              </>
+            )}
             
             {authMessage && (
               <div className={`mt-4 p-3 rounded-lg flex items-center space-x-2 ${
@@ -158,6 +199,14 @@ const Calendar: React.FC = () => {
             )}
           </div>
         </div>
+        
+        {/* Setup Wizard */}
+        {showSetupWizard && (
+          <GoogleCalendarWizard
+            onComplete={handleWizardComplete}
+            onClose={() => setShowSetupWizard(false)}
+          />
+        )}
       </div>
     );
   }
@@ -193,7 +242,18 @@ const Calendar: React.FC = () => {
       {/* Calendar Header */}
       <div className="flex items-center justify-between">
         <CalendarHeader />
-        <AuthButton />
+        <div className="flex items-center space-x-3">
+          {!hasCredentials && (
+            <button
+              onClick={() => setShowSetupWizard(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200"
+            >
+              <Settings className="w-4 h-4" />
+              <span>Setup</span>
+            </button>
+          )}
+          <AuthButton />
+        </div>
       </div>
 
       {/* Scheduling Tabs */}
@@ -213,6 +273,14 @@ const Calendar: React.FC = () => {
 
       {/* Calendar View */}
       {renderCalendarView()}
+      
+      {/* Setup Wizard */}
+      {showSetupWizard && (
+        <GoogleCalendarWizard
+          onComplete={handleWizardComplete}
+          onClose={() => setShowSetupWizard(false)}
+        />
+      )}
     </div>
   );
 };
