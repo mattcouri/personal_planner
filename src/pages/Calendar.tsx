@@ -37,11 +37,7 @@ const Calendar: React.FC = () => {
   } = useCalendarStore();
 
   useEffect(() => {
-    checkAuthAndLoadData();
-    
-    // Check if credentials are configured
-    const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID;
-    setHasCredentials(!!clientId);
+    initializeCalendar();
     
     // Handle auth callback messages
     const authParam = searchParams.get('auth');
@@ -54,16 +50,40 @@ const Calendar: React.FC = () => {
     }
   }, [searchParams]);
 
-  const checkAuthAndLoadData = async () => {
+  const initializeCalendar = async () => {
     try {
       setLoading(true);
       
-      const isAuthenticated = googleAuthService.isAuthenticated();
-      setAuthStatus(isAuthenticated ? 'authenticated' : 'unauthenticated');
+      // Check credentials first
+      const credentialsStatus = googleAuthService.getCredentialsStatus();
+      setHasCredentials(credentialsStatus.hasCredentials);
       
-      if (isAuthenticated) {
-        await loadCalendarData();
+      console.log('🔐 Credentials status:', credentialsStatus);
+      
+      if (!credentialsStatus.hasCredentials) {
+        console.log('❌ No credentials configured');
+        setAuthStatus('unauthenticated');
+        return;
       }
+      
+      if (!credentialsStatus.hasTokens) {
+        console.log('❌ No auth tokens found');
+        setAuthStatus('unauthenticated');
+        return;
+      }
+      
+      // Try to get a valid access token (this will refresh if needed)
+      try {
+        await googleAuthService.getValidAccessToken();
+        console.log('✅ Valid access token obtained');
+        setAuthStatus('authenticated');
+        await loadCalendarData();
+      } catch (tokenError) {
+        console.log('❌ Token validation failed:', tokenError);
+        setAuthStatus('unauthenticated');
+        setError('Authentication expired. Please sign in again.');
+      }
+      
     } catch (error) {
       console.error('Auth check failed:', error);
       setAuthStatus('unauthenticated');
@@ -133,6 +153,19 @@ const Calendar: React.FC = () => {
     setTimeout(() => setAuthMessage(null), 5000);
   };
 
+  const handleReconnect = async () => {
+    try {
+      setLoading(true);
+      await googleAuthService.initialize();
+      const authUrl = googleAuthService.getAuthUrl();
+      window.location.href = authUrl;
+    } catch (error) {
+      console.error('Reconnection failed:', error);
+      setError('Failed to reconnect. Please try again.');
+      setLoading(false);
+    }
+  };
+
   const renderCalendarView = () => {
     switch (currentView) {
       case 'month':
@@ -190,7 +223,17 @@ const Calendar: React.FC = () => {
                 <p className="text-gray-600 dark:text-gray-300 mb-6">
                   Connect your Google Calendar to access all four scheduling types: Meetings, Events, Out of Office, and Appointment Schedules.
                 </p>
-                <AuthButton />
+                <div className="space-y-4">
+                  <AuthButton />
+                  {authStatus === 'unauthenticated' && hasCredentials && (
+                    <button
+                      onClick={handleReconnect}
+                      className="w-full flex items-center justify-center space-x-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-200"
+                    >
+                      <span>Reconnect to Google Calendar</span>
+                    </button>
+                  )}
+                </div>
               </>
             )}
             

@@ -8,24 +8,36 @@ const AuthButton: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
-  const checkAuthStatus = async () => {
-    try {
-      const authenticated = googleAuthService.isAuthenticated();
-      setIsAuthenticated(authenticated);
-      
-      if (authenticated) {
+    // Check auth status when component mounts
+    const checkAuth = async () => {
+      try {
+        const credentialsStatus = googleAuthService.getCredentialsStatus();
+        
+        if (!credentialsStatus.hasCredentials) {
+          setIsAuthenticated(false);
+          setUserInfo(null);
+          return;
+        }
+        
+        if (!credentialsStatus.hasTokens) {
+          setIsAuthenticated(false);
+          setUserInfo(null);
+          return;
+        }
+        
+        // Try to get user info to verify authentication
         const user = await googleAuthService.getUserInfo();
         setUserInfo(user);
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error('Auth status check failed:', error);
+        setIsAuthenticated(false);
+        setUserInfo(null);
       }
-    } catch (error) {
-      console.error('Auth status check failed:', error);
-      setIsAuthenticated(false);
-      setUserInfo(null);
-    }
-  };
+    };
+    
+    checkAuth();
+  }, []);
 
   const handleSignIn = async () => {
     try {
@@ -43,7 +55,8 @@ const AuthButton: React.FC = () => {
     googleAuthService.signOut();
     setIsAuthenticated(false);
     setUserInfo(null);
-    window.location.reload();
+    // Don't reload - just update state
+    // window.location.reload();
   };
 
   if (isAuthenticated && userInfo) {

@@ -210,12 +210,16 @@ class GoogleAuthService {
   // Check if user is authenticated
   isAuthenticated(): boolean {
     const tokens = this.getStoredTokens();
-    return !!tokens?.access_token && !!this.config.clientId;
+    const hasCredentials = this.getClientId() && this.getClientSecret();
+    return !!tokens?.access_token && !!hasCredentials;
   }
 
   // Sign out
   signOut(): void {
     localStorage.removeItem('google_auth_tokens');
+    // Don't remove credentials - keep them for reconnection
+    // localStorage.removeItem('google_client_id');
+    // localStorage.removeItem('google_client_secret');
   }
 
   // Get user info
@@ -238,6 +242,19 @@ class GoogleAuthService {
       console.error('Failed to get user info:', error);
       throw error;
     }
+  }
+
+  // Check if credentials are configured
+  hasCredentials(): boolean {
+    return !!(this.getClientId() && this.getClientSecret());
+  }
+
+  // Get stored credentials status
+  getCredentialsStatus(): { hasCredentials: boolean; hasTokens: boolean } {
+    return {
+      hasCredentials: this.hasCredentials(),
+      hasTokens: !!this.getStoredTokens()?.access_token
+    };
   }
 }
 

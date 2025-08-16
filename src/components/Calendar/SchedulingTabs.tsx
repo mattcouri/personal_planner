@@ -84,8 +84,11 @@ const SchedulingTabs: React.FC = () => {
       setQuickAddText('');
       setShowQuickAdd(false);
       console.log('✅ Event created successfully!');
-      // Refresh calendar data
-      window.location.reload(); // Quick fix - better to call loadCalendarData
+      // TODO: Better to call a refresh function instead of page reload
+      // For now, we'll use a small delay to let the API sync
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
     } catch (error) {
       console.error('❌ Failed to create event:', error);
       alert('Failed to create event. Please try again.');
