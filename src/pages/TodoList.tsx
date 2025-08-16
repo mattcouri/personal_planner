@@ -14,16 +14,13 @@ export default function TodoList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterProject, setFilterProject] = useState<string>('');
   const [filterPriority, setFilterPriority] = useState<string>('');
-  const [showCompleted, setShowCompleted] = useState(false);
   const [showTodoModal, setShowTodoModal] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [editTodo, setEditTodo] = useState<any>(null);
   const [todoProjectId, setTodoProjectId] = useState<string>('');
 
-  // Filter todos (exclude completed ones - they go to separate page)
+  // Filter todos (show all todos including completed ones)
   const filteredTodos = state.todos.filter(todo => {
-    if (todo.completed && !showCompleted) return false;
-    
     const matchesSearch = todo.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          todo.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesProject = !filterProject || todo.projectId === filterProject;
@@ -34,7 +31,7 @@ export default function TodoList() {
 
   // Calculate KPI metrics
   const calculateKPIs = () => {
-    const totalTodos = state.todos.filter(todo => !todo.completed).length;
+    const activeTodos = state.todos.filter(todo => !todo.completed).length;
     const completedTodos = state.todos.filter(todo => todo.completed).length;
     const overdueTodos = state.todos.filter(todo => 
       !todo.completed && todo.dueDate && new Date(todo.dueDate) < new Date()
@@ -44,7 +41,7 @@ export default function TodoList() {
     ).length;
     
     return {
-      totalTodos,
+      activeTodos,
       completedTodos,
       overdueTodos,
       highPriorityTodos
@@ -247,7 +244,7 @@ export default function TodoList() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Active Tasks</p>
-              <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">{kpis.totalTodos}</p>
+              <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">{kpis.activeTodos}</p>
             </div>
             <CheckSquare className="w-8 h-8 text-blue-500" />
           </div>
@@ -290,23 +287,6 @@ export default function TodoList() {
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             Filter Tasks
           </h3>
-
-          {/* Show Completed Toggle */}
-          <label className="flex items-center space-x-2 cursor-pointer">
-            <button
-              onClick={() => setShowCompleted(!showCompleted)}
-              className={`p-2 rounded-lg transition-all duration-200 ${
-                showCompleted
-                  ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-              }`}
-            >
-              {showCompleted ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-            </button>
-            <span className="text-sm text-gray-700 dark:text-gray-300">
-              {showCompleted ? 'Hide' : 'Show'} completed
-            </span>
-          </label>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -439,12 +419,17 @@ function DraggableTodoItem({
         
         <button
           onClick={() => onToggle(todo.id)}
-          className={`w-3 h-3 rounded border transition-all duration-200 flex-shrink-0 ${
+          className={`w-3 h-3 rounded border transition-all duration-200 flex-shrink-0 flex items-center justify-center ${
             todo.completed
-              ? 'bg-green-500 border-green-500'
+              ? 'bg-green-500 border-green-500 text-white'
               : 'border-gray-300 dark:border-gray-500 hover:border-primary-500'
           }`}
         >
+          {todo.completed && (
+            <svg className="w-2 h-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+          )}
         </button>
         
         <div className="flex-1 min-w-0">
@@ -452,7 +437,7 @@ function DraggableTodoItem({
             <h4 
               className={`font-medium text-xs cursor-pointer hover:text-primary-600 truncate ${
                 todo.completed 
-                  ? 'line-through text-gray-500 dark:text-gray-400' 
+                  ? 'line-through decoration-2 decoration-gray-500 text-gray-500 dark:text-gray-400' 
                   : 'text-gray-900 dark:text-white'
               }`}
               onDoubleClick={() => onEdit(todo)}
