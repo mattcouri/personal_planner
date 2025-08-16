@@ -7,7 +7,7 @@ import GoogleCalendarWizard from '../components/Setup/GoogleCalendarWizard';
 
 // Components
 import CalendarHeader from '../components/Calendar/CalendarHeader';
-import SchedulingTabs from '../components/Calendar/SchedulingTabs';
+import CalendarSidebar from '../components/Calendar/CalendarSidebar';
 import MonthView from '../components/Calendar/MonthView';
 import WeekView from '../components/Calendar/WeekView';
 import DayView from '../components/Calendar/DayView';
@@ -26,6 +26,7 @@ const Calendar: React.FC = () => {
   
   const {
     currentView,
+    setCurrentView,
     isLoading,
     error,
     setLoading,
@@ -36,6 +37,12 @@ const Calendar: React.FC = () => {
     setOutOfOfficeEvents
   } = useCalendarStore();
 
+  // Set default view to week (like Google Calendar)
+  useEffect(() => {
+    if (currentView === 'month') {
+      setCurrentView('week');
+    }
+  }, []);
   useEffect(() => {
     initializeCalendar();
     
@@ -279,10 +286,13 @@ const Calendar: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="h-screen flex flex-col bg-white dark:bg-gray-900">
+      {/* Header */}
+      <CalendarHeader />
+      
       {/* Auth Success/Error Messages */}
       {authMessage && (
-        <div className={`p-4 rounded-lg flex items-center space-x-2 ${
+        <div className={`mx-6 mt-4 p-4 rounded-lg flex items-center space-x-2 ${
           authMessage.includes('Successfully') 
             ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700/50' 
             : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700/50'
@@ -298,7 +308,7 @@ const Calendar: React.FC = () => {
 
       {/* Error Display */}
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/50 rounded-lg p-4">
+        <div className="mx-6 mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/50 rounded-lg p-4">
           <div className="flex items-center space-x-2">
             <AlertCircle className="w-5 h-5 text-red-500" />
             <span className="text-red-700 dark:text-red-300">{error}</span>
@@ -306,25 +316,15 @@ const Calendar: React.FC = () => {
         </div>
       )}
 
-      {/* Calendar Header */}
-      <div className="flex items-center justify-between">
-        <CalendarHeader />
-        <div className="flex items-center space-x-3">
-          {!hasCredentials && (
-            <button
-              onClick={() => setShowSetupWizard(true)}
-              className="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-200"
-            >
-              <Settings className="w-4 h-4" />
-              <span>Setup</span>
-            </button>
-          )}
-          <AuthButton />
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <CalendarSidebar />
+        
+        {/* Main Calendar Area */}
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {renderCalendarView()}
         </div>
       </div>
-
-      {/* Scheduling Tabs */}
-      <SchedulingTabs />
 
       {/* Loading Overlay */}
       {isLoading && (
@@ -338,9 +338,6 @@ const Calendar: React.FC = () => {
         </div>
       )}
 
-      {/* Calendar View */}
-      {renderCalendarView()}
-      
       {/* Setup Wizard */}
       {showSetupWizard && (
         <GoogleCalendarWizard

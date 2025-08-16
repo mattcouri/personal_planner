@@ -1,5 +1,5 @@
-import React from 'react';
-import { format, startOfWeek, addDays, isSameDay, isToday } from 'date-fns';
+import React, { useEffect, useState } from 'react';
+import { format, startOfWeek, addDays, isSameDay, isToday, addMinutes } from 'date-fns';
 import { useCalendarStore } from '../../stores/calendarStore';
 import { googleCalendarApi } from '../../services/googleCalendarApi';
 
@@ -14,10 +14,29 @@ const WeekView: React.FC = () => {
     currentView
   } = useCalendarStore();
 
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Update current time every minute
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000);
+    return () => clearInterval(timer);
+  }, []);
+
   const weekStart = startOfWeek(currentDate);
   const daysToShow = currentView === '4days' ? 4 : 7;
   const weekDays = Array.from({ length: daysToShow }, (_, i) => addDays(weekStart, i));
   const hours = Array.from({ length: 24 }, (_, i) => i);
+
+  // Get timezone offset
+  const getTimezoneOffset = () => {
+    const offset = new Date().getTimezoneOffset();
+    const hours = Math.floor(Math.abs(offset) / 60);
+    const minutes = Math.abs(offset) % 60;
+    const sign = offset <= 0 ? '+' : '-';
+    return `GMT${sign}${hours.toString().padStart(2, '0')}${minutes > 0 ? ':' + minutes.toString().padStart(2, '0') : ''}`;
+  };
 
   const getEventsForDayAndHour = (day: Date, hour: number) => {
     const dayEvents = events.filter(event => {
@@ -37,15 +56,6 @@ const WeekView: React.FC = () => {
     });
 
     return { events: dayEvents, outOfOffice: dayOutOfOffice };
-  };
-
-  const getTasksForDay = (day: Date) => {
-    return tasks.filter(task => {
-      if (task.due) {
-        return isSameDay(new Date(task.due), day);
-      }
-      return false;
-    });
   };
 
   const handleTimeSlotClick = async (day: Date, hour: number) => {
@@ -74,64 +84,87 @@ const WeekView: React.FC = () => {
       
       await googleCalendarApi.createEvent('primary', event);
       console.log('✅ Event created successfully!');
-      window.location.reload(); // Quick refresh - better to update state
+      window.location.reload();
     } catch (error) {
       console.error('❌ Failed to create event:', error);
       alert('Failed to create event. Please try again.');
     }
   };
+
   const renderEvent = (event: any, type: 'event' | 'outOfOffice') => {
     const duration = event.end?.dateTime && event.start?.dateTime
       ? (new Date(event.end.dateTime).getTime() - new Date(event.start.dateTime).getTime()) / (1000 * 60)
       : 60;
     
-    const height = Math.max((duration / 60) * 60, 30); // Minimum 30px height
+    const height = Math.max((duration / 60) * 48, 20);
+    const startMinute = event.start?.dateTime ? new Date(event.start.dateTime).getMinutes() : 0;
+    const topOffset = (startMinute / 60) * 48;
 
     const colorClass = type === 'outOfOffice'
-      ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-700/50'
-      : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700/50';
+      ? 'bg-orange-400 text-white border-orange-500'
+      : 'bg-blue-400 text-white border-blue-500';
 
     return (
       <div
         key={event.id}
-        className={`absolute left-1 right-1 p-1 rounded border text-xs cursor-pointer hover:shadow-md transition-all duration-200 z-10 ${colorClass}`}
-        style={{ height: `${height}px`, minHeight: '30px' }}
+        className={`absolute left-1 right-1 rounded px-2 py-1 text-xs cursor-pointer hover:shadow-md transition-all duration-200 z-10 border-l-4 ${colorClass}`}
+        style={{ 
+          height: `${height}px`, 
+          minHeight: '20px',
+          top: `${topOffset}px`
+        }}
         title={event.summary || event.title}
       >
         <div className="font-medium truncate">{event.summary || event.title}</div>
         {event.start?.dateTime && (
-          <div className="text-xs opacity-75">
+          <div className="opacity-90 truncate text-xs">
             {format(new Date(event.start.dateTime), 'HH:mm')}
             {event.end?.dateTime && ` - ${format(new Date(event.end.dateTime), 'HH:mm')}`}
           </div>
+        )}
+        {event.location && (
+          <div className="opacity-75 truncate text-xs">{event.location}</div>
         )}
       </div>
     );
   };
 
+  // Calculate current time line position
+  const getCurrentTimePosition = () => {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    return (hours * 48) + (minutes / 60 * 48);
+  };
+
+  const isCurrentTimeVisible = () => {
+    const now = new Date();
+    return weekDays.some(day => isSameDay(day, now));
+  };
+
   return (
-    <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden">
+    <div className="flex-1 bg-white dark:bg-gray-800 overflow-hidden">
       {/* Header with days */}
-      <div className="grid border-b border-gray-200 dark:border-gray-700" style={{ gridTemplateColumns: `80px repeat(${daysToShow}, 1fr)` }}>
-        <div className="p-3 bg-gray-50 dark:bg-gray-700/50"></div>
+      <div className="grid border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 sticky top-0 z-30" 
+           style={{ gridTemplateColumns: '60px repeat(' + daysToShow + ', 1fr)' }}>
+        {/* GMT offset */}
+        <div className="p-2 text-xs text-gray-500 dark:text-gray-400 border-r border-gray-200 dark:border-gray-700 flex items-end justify-end pb-4">
+          {getTimezoneOffset()}
+        </div>
+        
+        {/* Day headers */}
         {weekDays.map(day => (
-          <div
-            key={day.toString()}
+          <div 
+            key={day.toString()} 
+            className="text-center py-4 border-r border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors duration-200"
             onClick={() => setSelectedDate(day)}
-            className={`p-3 text-center cursor-pointer transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-700/30 ${
-              selectedDate && isSameDay(day, selectedDate) 
-                ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400' 
-                : 'bg-gray-50 dark:bg-gray-700/50'
-            } ${
-              isToday(day) ? 'font-bold' : ''
-            }`}
           >
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-300">
+            <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide font-medium">
               {format(day, 'EEE')}
             </div>
-            <div className={`text-lg ${
+            <div className={`text-2xl font-normal mt-1 ${
               isToday(day) 
-                ? 'bg-primary-500 text-white w-8 h-8 rounded-full flex items-center justify-center mx-auto mt-1' 
+                ? 'bg-blue-500 text-white w-10 h-10 rounded-full flex items-center justify-center mx-auto' 
                 : 'text-gray-900 dark:text-white'
             }`}>
               {format(day, 'd')}
@@ -140,49 +173,15 @@ const WeekView: React.FC = () => {
         ))}
       </div>
 
-      {/* Tasks row (for all-day items) */}
-      <div className="grid border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30" style={{ gridTemplateColumns: `80px repeat(${daysToShow}, 1fr)` }}>
-        <div className="p-2 text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center">
-          All Day
-        </div>
-        {weekDays.map(day => {
-          const dayTasks = getTasksForDay(day);
-          return (
-            <div key={`tasks-${day.toString()}`} className="p-2 min-h-[60px] border-r border-gray-200 dark:border-gray-700">
-              <div className="space-y-1">
-                {dayTasks.slice(0, 2).map(task => (
-                  <div
-                    key={task.id}
-                    className="text-xs p-1 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700/50 cursor-pointer hover:shadow-sm transition-all duration-200"
-                      className="relative min-h-[60px] border-r border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-all duration-200 cursor-pointer"
-                      onClick={() => handleTimeSlotClick(day, hour)}
-                      title={`Click to add event at ${format(day, 'MMM d')} ${format(new Date().setHours(hour, 0, 0, 0), 'HH:mm')}`}
-                  >
-                    <div className="flex items-center space-x-1">
-                      <span className={task.status === 'completed' ? 'line-through' : ''}>{task.title}</span>
-                      {task.status === 'completed' && <span className="text-green-500">✓</span>}
-                    </div>
-                  </div>
-                ))}
-                {dayTasks.length > 2 && (
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    +{dayTasks.length - 2} more
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
       {/* Time grid */}
-      <div className="max-h-[600px] overflow-y-auto">
-        <div className="grid" style={{ gridTemplateColumns: `80px repeat(${daysToShow}, 1fr)` }}>
+      <div className="relative overflow-y-auto" style={{ height: 'calc(100vh - 200px)' }}>
+        <div className="relative">
           {hours.map(hour => (
-            <React.Fragment key={hour}>
+            <div key={hour} className="grid border-b border-gray-100 dark:border-gray-700/50" 
+                 style={{ gridTemplateColumns: '60px repeat(' + daysToShow + ', 1fr)', minHeight: '48px' }}>
               {/* Time label */}
-              <div className="p-2 text-xs text-gray-500 dark:text-gray-400 border-r border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/30">
-                {format(new Date().setHours(hour, 0, 0, 0), 'HH:mm')}
+              <div className="text-xs text-gray-500 dark:text-gray-400 p-2 border-r border-gray-200 dark:border-gray-700 text-right pr-3">
+                {hour === 0 ? '' : format(new Date().setHours(hour, 0), 'HH:mm')}
               </div>
               
               {/* Day columns */}
@@ -191,7 +190,8 @@ const WeekView: React.FC = () => {
                 return (
                   <div
                     key={`${day.toString()}-${hour}`}
-                    className="relative min-h-[60px] border-r border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-all duration-200"
+                    className="relative border-r border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer transition-colors duration-200"
+                    onClick={() => handleTimeSlotClick(day, hour)}
                   >
                     {/* Events */}
                     {hourData.events.map(event => renderEvent(event, 'event'))}
@@ -199,8 +199,21 @@ const WeekView: React.FC = () => {
                   </div>
                 );
               })}
-            </React.Fragment>
+            </div>
           ))}
+          
+          {/* Current time indicator */}
+          {isCurrentTimeVisible() && (
+            <div 
+              className="absolute left-0 right-0 z-20 pointer-events-none"
+              style={{ top: `${getCurrentTimePosition()}px` }}
+            >
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-red-500 rounded-full ml-14 -mt-1.5"></div>
+                <div className="flex-1 h-0.5 bg-red-500"></div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

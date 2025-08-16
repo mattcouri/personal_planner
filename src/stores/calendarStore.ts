@@ -75,7 +75,7 @@ export const useCalendarStore = create<CalendarState & CalendarActions>()(
   devtools(
     (set, get) => ({
       // Initial State
-      currentView: 'month',
+      currentView: 'week',
       currentDate: new Date(),
       selectedDate: null,
       activeSchedulingType: 'meetings',
