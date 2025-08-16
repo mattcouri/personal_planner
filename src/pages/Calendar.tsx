@@ -15,7 +15,7 @@ import AgendaView from '../components/Calendar/AgendaView';
 import AuthButton from '../components/Auth/AuthButton';
 
 // Icons
-import { AlertCircle, CheckCircle, Calendar as CalendarIcon } from 'lucide-react';
+import { AlertCircle, CheckCircle, Calendar as CalendarIcon, Settings } from 'lucide-react';
 
 const Calendar: React.FC = () => {
   const [searchParams] = useSearchParams();
