@@ -1,6 +1,7 @@
 import React from 'react';
 import { format, startOfWeek, addDays, isSameDay, isToday } from 'date-fns';
 import { useCalendarStore } from '../../stores/calendarStore';
+import { googleCalendarApi } from '../../services/googleCalendarApi';
 
 const WeekView: React.FC = () => {
   const {
@@ -47,6 +48,38 @@ const WeekView: React.FC = () => {
     });
   };
 
+  const handleTimeSlotClick = async (day: Date, hour: number) => {
+    const startTime = new Date(day);
+    startTime.setHours(hour, 0, 0, 0);
+    
+    const endTime = new Date(startTime);
+    endTime.setHours(hour + 1, 0, 0, 0);
+    
+    const eventTitle = prompt('Enter event title:');
+    if (!eventTitle) return;
+    
+    try {
+      console.log('🚀 Creating event:', eventTitle, 'at', startTime);
+      const event = {
+        summary: eventTitle,
+        start: {
+          dateTime: startTime.toISOString(),
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        },
+        end: {
+          dateTime: endTime.toISOString(),
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        }
+      };
+      
+      await googleCalendarApi.createEvent('primary', event);
+      console.log('✅ Event created successfully!');
+      window.location.reload(); // Quick refresh - better to update state
+    } catch (error) {
+      console.error('❌ Failed to create event:', error);
+      alert('Failed to create event. Please try again.');
+    }
+  };
   const renderEvent = (event: any, type: 'event' | 'outOfOffice') => {
     const duration = event.end?.dateTime && event.start?.dateTime
       ? (new Date(event.end.dateTime).getTime() - new Date(event.start.dateTime).getTime()) / (1000 * 60)
@@ -121,7 +154,9 @@ const WeekView: React.FC = () => {
                   <div
                     key={task.id}
                     className="text-xs p-1 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700/50 cursor-pointer hover:shadow-sm transition-all duration-200"
-                    title={task.title}
+                      className="relative min-h-[60px] border-r border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-all duration-200 cursor-pointer"
+                      onClick={() => handleTimeSlotClick(day, hour)}
+                      title={`Click to add event at ${format(day, 'MMM d')} ${format(new Date().setHours(hour, 0, 0, 0), 'HH:mm')}`}
                   >
                     <div className="flex items-center space-x-1">
                       <span className={task.status === 'completed' ? 'line-through' : ''}>{task.title}</span>

@@ -78,28 +78,39 @@ const Calendar: React.FC = () => {
       setLoading(true);
       setError(null);
 
+      console.log('🔄 Loading calendar data...');
+
       // Load events
+      console.log('📅 Fetching events...');
       const eventsResponse = await googleCalendarApi.getEvents();
+      console.log('📅 Events response:', eventsResponse);
       setEvents(eventsResponse.items || []);
 
       // Load task lists
+      console.log('📋 Fetching task lists...');
       const taskListsResponse = await googleCalendarApi.getTaskLists();
+      console.log('📋 Task lists response:', taskListsResponse);
       setTaskLists(taskListsResponse.items || []);
 
       // Load tasks from all task lists
+      console.log('✅ Fetching tasks...');
       const allTasks = [];
       for (const taskList of taskListsResponse.items || []) {
         const tasksResponse = await googleCalendarApi.getTasks(taskList.id);
+        console.log(`✅ Tasks for ${taskList.title}:`, tasksResponse);
         allTasks.push(...(tasksResponse.items || []));
       }
       setTasks(allTasks);
 
       // Load out-of-office events
+      console.log('☕ Fetching out-of-office events...');
       const outOfOfficeResponse = await googleCalendarApi.getOutOfOfficeEvents();
+      console.log('☕ Out-of-office response:', outOfOfficeResponse);
       setOutOfOfficeEvents(outOfOfficeResponse.items || []);
 
+      console.log('✅ Calendar data loaded successfully!');
     } catch (error) {
-      console.error('Failed to load calendar data:', error);
+      console.error('❌ Failed to load calendar data:', error);
       setError('Failed to load calendar data. Please try refreshing the page.');
     } finally {
       setLoading(false);

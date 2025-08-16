@@ -1,6 +1,7 @@
 import React from 'react';
 import { format, isSameDay } from 'date-fns';
 import { useCalendarStore } from '../../stores/calendarStore';
+import { googleCalendarApi } from '../../services/googleCalendarApi';
 
 const DayView: React.FC = () => {
   const {
@@ -75,6 +76,38 @@ const DayView: React.FC = () => {
     );
   };
 
+  const handleTimeSlotClick = async (hour: number) => {
+    const startTime = new Date(currentDate);
+    startTime.setHours(hour, 0, 0, 0);
+    
+    const endTime = new Date(startTime);
+    endTime.setHours(hour + 1, 0, 0, 0);
+    
+    const eventTitle = prompt('Enter event title:');
+    if (!eventTitle) return;
+    
+    try {
+      console.log('🚀 Creating event:', eventTitle, 'at', startTime);
+      const event = {
+        summary: eventTitle,
+        start: {
+          dateTime: startTime.toISOString(),
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        },
+        end: {
+          dateTime: endTime.toISOString(),
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        }
+      };
+      
+      await googleCalendarApi.createEvent('primary', event);
+      console.log('✅ Event created successfully!');
+      window.location.reload(); // Quick refresh - better to update state
+    } catch (error) {
+      console.error('❌ Failed to create event:', error);
+      alert('Failed to create event. Please try again.');
+    }
+  };
   const dayTasks = getDayTasks();
 
   return (
@@ -124,15 +157,19 @@ const DayView: React.FC = () => {
               </div>
               
               {/* Events column */}
-              <div className="flex-1 p-3">
+              <div 
+                className="flex-1 p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-all duration-200"
+                onClick={() => handleTimeSlotClick(hour)}
+                title={`Click to add event at ${format(new Date().setHours(hour, 0, 0, 0), 'HH:mm')}`}
+              >
                 {hasEvents ? (
                   <div className="space-y-2">
                     {hourData.events.map(event => renderEvent(event, 'event'))}
                     {hourData.outOfOffice.map(event => renderEvent(event, 'outOfOffice'))}
                   </div>
                 ) : (
-                  <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-500 text-sm">
-                    {/* Empty hour slot */}
+                  <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-500 text-sm opacity-0 hover:opacity-100 transition-opacity duration-200">
+                    Click to add event
                   </div>
                 )}
               </div>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Users, 
   CheckSquare, 
@@ -8,9 +8,13 @@ import {
 } from 'lucide-react';
 import { useCalendarStore } from '../../stores/calendarStore';
 import { SchedulingType } from '../../types/calendar';
+import { googleCalendarApi } from '../../services/googleCalendarApi';
 
 const SchedulingTabs: React.FC = () => {
   const { activeSchedulingType, setActiveSchedulingType } = useCalendarStore();
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickAddText, setQuickAddText] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
 
   const tabs: Array<{
     key: SchedulingType;
@@ -70,16 +74,73 @@ const SchedulingTabs: React.FC = () => {
     return colorClasses[color as keyof typeof colorClasses];
   };
 
+  const handleQuickAdd = async () => {
+    if (!quickAddText.trim()) return;
+    
+    try {
+      setIsCreating(true);
+      console.log('🚀 Creating quick event:', quickAddText);
+      await googleCalendarApi.quickAddEvent('primary', quickAddText);
+      setQuickAddText('');
+      setShowQuickAdd(false);
+      console.log('✅ Event created successfully!');
+      // Refresh calendar data
+      window.location.reload(); // Quick fix - better to call loadCalendarData
+    } catch (error) {
+      console.error('❌ Failed to create event:', error);
+      alert('Failed to create event. Please try again.');
+    } finally {
+      setIsCreating(false);
+    }
+  };
   return (
     <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-6 mb-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
           Scheduling Types
         </h3>
-        <button className="flex items-center space-x-2 px-3 py-1 text-sm bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-all duration-200">
-          <Plus className="w-4 h-4" />
-          <span>Quick Add</span>
-        </button>
+        
+        {/* Quick Add Button with Popup */}
+        <div className="relative">
+          <button 
+            onClick={() => setShowQuickAdd(!showQuickAdd)}
+            className="flex items-center space-x-2 px-3 py-1 text-sm bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-all duration-200"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Quick Add</span>
+          </button>
+          
+          {/* Quick Add Popup */}
+          {showQuickAdd && (
+            <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 p-4">
+              <h4 className="font-medium text-gray-900 dark:text-white mb-2">Quick Add Event</h4>
+              <input
+                type="text"
+                value={quickAddText}
+                onChange={(e) => setQuickAddText(e.target.value)}
+                placeholder="e.g., Lunch with John tomorrow at 12pm"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white mb-3"
+                onKeyPress={(e) => e.key === 'Enter' && handleQuickAdd()}
+                autoFocus
+              />
+              <div className="flex space-x-2">
+                <button
+                  onClick={handleQuickAdd}
+                  disabled={isCreating || !quickAddText.trim()}
+                  className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                >
+                  {isCreating ? 'Creating...' : 'Create Event'}
+                </button>
+                <button
+                  onClick={() => setShowQuickAdd(false)}
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-all duration-200"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

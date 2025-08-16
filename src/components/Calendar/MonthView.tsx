@@ -12,6 +12,7 @@ import {
 } from 'date-fns';
 import { useCalendarStore } from '../../stores/calendarStore';
 import { CalendarEvent, Task, OutOfOfficeEvent } from '../../types/calendar';
+import { googleCalendarApi } from '../../services/googleCalendarApi';
 
 const MonthView: React.FC = () => {
   const {
@@ -63,6 +64,37 @@ const MonthView: React.FC = () => {
     return { events: dayEvents, tasks: dayTasks, outOfOffice: dayOutOfOffice };
   };
 
+  const handleDayClick = async (day: Date, event: React.MouseEvent) => {
+    // Only handle click if not clicking on an event
+    if ((event.target as HTMLElement).closest('.event-item')) {
+      return;
+    }
+    
+    const eventTitle = prompt(`Add event for ${format(day, 'MMM d, yyyy')}:`);
+    if (!eventTitle) return;
+    
+    try {
+      console.log('🚀 Creating all-day event:', eventTitle, 'on', day);
+      const eventData = {
+        summary: eventTitle,
+        start: {
+          date: format(day, 'yyyy-MM-dd'),
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        },
+        end: {
+          date: format(day, 'yyyy-MM-dd'),
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        }
+      };
+      
+      await googleCalendarApi.createEvent('primary', eventData);
+      console.log('✅ Event created successfully!');
+      window.location.reload(); // Quick refresh - better to update state
+    } catch (error) {
+      console.error('❌ Failed to create event:', error);
+      alert('Failed to create event. Please try again.');
+    }
+  };
   const renderEventItem = (item: CalendarEvent | Task | OutOfOfficeEvent, type: string) => {
     const getEventColor = () => {
       switch (type) {
@@ -93,7 +125,7 @@ const MonthView: React.FC = () => {
     return (
       <div
         key={item.id}
-        className={`text-xs p-1 rounded border mb-1 truncate cursor-pointer hover:shadow-sm transition-all duration-200 ${getEventColor()}`}
+        className={`event-item text-xs p-1 rounded border mb-1 truncate cursor-pointer hover:shadow-sm transition-all duration-200 ${getEventColor()}`}
         title={`${getTitle()} ${getTime()}`}
       >
         <div className="flex items-center space-x-1">
@@ -129,7 +161,10 @@ const MonthView: React.FC = () => {
           return (
             <div
               key={day.toString()}
-              onClick={() => setSelectedDate(day)}
+              onClick={(e) => {
+                setSelectedDate(day);
+                handleDayClick(day, e);
+              }}
               className={`min-h-[120px] p-2 border-r border-b border-gray-200 dark:border-gray-700 cursor-pointer transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-700/30 ${
                 !isCurrentMonth ? 'bg-gray-50 dark:bg-gray-900/50 text-gray-400' : ''
               } ${
@@ -137,6 +172,7 @@ const MonthView: React.FC = () => {
               } ${
                 isDayToday ? 'bg-primary-50 dark:bg-primary-900/10' : ''
               }`}
+              title={`Click to add event on ${format(day, 'MMM d, yyyy')}`}
             >
               {/* Day Number */}
               <div className={`text-sm font-medium mb-2 ${
