@@ -1,240 +1,220 @@
-import React, { useState } from 'react';
-import {
-  format,
-  startOfMonth,
-  endOfMonth,
-  eachDayOfInterval,
-  isSameMonth,
-  isToday,
-  isSameDay,
-  startOfWeek,
-  endOfWeek,
-  addDays,
-  setHours,
-  setMinutes,
-} from 'date-fns';
-import {
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  Calendar as CalendarIcon,
-  Grid3X3,
-  List,
-  Eye,
-} from 'lucide-react';
-import { useData } from '../contexts/DataContext';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { useCalendarStore } from '../stores/calendarStore';
+import { googleAuthService } from '../services/googleAuth';
+import { googleCalendarApi } from '../services/googleCalendarApi';
 
-// Placeholder – swap for OAuth button + integration
-function GoogleCalendarConnect() {
-  return (
-    <div className="p-4 border rounded bg-white dark:bg-gray-800 mt-6">
-      <h4 className="font-semibold text-gray-700 dark:text-gray-300 mb-2">
-        Google Calendar Sync
-      </h4>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-        Connect to sync your events.
-      </p>
-      <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-        Connect Google Calendar
-      </button>
-    </div>
-  );
-}
+// Components
+import CalendarHeader from '../components/Calendar/CalendarHeader';
+import SchedulingTabs from '../components/Calendar/SchedulingTabs';
+import MonthView from '../components/Calendar/MonthView';
+import WeekView from '../components/Calendar/WeekView';
+import DayView from '../components/Calendar/DayView';
+import AgendaView from '../components/Calendar/AgendaView';
+import AuthButton from '../components/Auth/AuthButton';
 
-type CalendarView = 'month' | 'week' | 'day' | 'year';
+// Icons
+import { AlertCircle, CheckCircle, Calendar as CalendarIcon } from 'lucide-react';
 
-export default function Calendar() {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [view, setView] = useState<CalendarView>('month');
-  const { state, dispatch } = useData();
+const Calendar: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const [authStatus, setAuthStatus] = useState<'checking' | 'authenticated' | 'unauthenticated'>('checking');
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
+  
+  const {
+    currentView,
+    isLoading,
+    error,
+    setLoading,
+    setError,
+    setEvents,
+    setTasks,
+    setTaskLists,
+    setOutOfOfficeEvents
+  } = useCalendarStore();
 
-  const getEventsForDay = (day: Date) => {
-    return state.events.filter((event) => isSameDay(event.start, day));
-  };
-
-  const handleDoubleClick = (event: any) => {
-    const updatedTitle = prompt('Edit Event Title', event.title);
-    if (updatedTitle) {
-      dispatch({
-        type: 'UPDATE_EVENT',
-        payload: { ...event, title: updatedTitle },
-      });
+  useEffect(() => {
+    checkAuthAndLoadData();
+    
+    // Handle auth callback messages
+    const authParam = searchParams.get('auth');
+    if (authParam === 'success') {
+      setAuthMessage('Successfully connected to Google Calendar!');
+      setTimeout(() => setAuthMessage(null), 5000);
+    } else if (authParam === 'error') {
+      setAuthMessage('Failed to connect to Google Calendar. Please try again.');
+      setTimeout(() => setAuthMessage(null), 5000);
     }
-  };
+  }, [searchParams]);
 
-  const navigateDate = (direction: 'prev' | 'next') => {
-    setCurrentDate((prev) => {
-      const newDate = new Date(prev);
-      switch (view) {
-        case 'year':
-          newDate.setFullYear(prev.getFullYear() + (direction === 'next' ? 1 : -1));
-          break;
-        case 'month':
-          newDate.setMonth(prev.getMonth() + (direction === 'next' ? 1 : -1));
-          break;
-        case 'week':
-          return direction === 'next' ? addDays(prev, 7) : addDays(prev, -7);
-        case 'day':
-          return direction === 'next' ? addDays(prev, 1) : addDays(prev, -1);
+  const checkAuthAndLoadData = async () => {
+    try {
+      setLoading(true);
+      
+      const isAuthenticated = googleAuthService.isAuthenticated();
+      setAuthStatus(isAuthenticated ? 'authenticated' : 'unauthenticated');
+      
+      if (isAuthenticated) {
+        await loadCalendarData();
       }
-      return newDate;
-    });
-  };
-
-  const getViewTitle = () => {
-    switch (view) {
-      case 'year':
-        return format(currentDate, 'yyyy');
-      case 'month':
-        return format(currentDate, 'MMMM yyyy');
-      case 'week':
-        const weekStart = startOfWeek(currentDate);
-        const weekEnd = endOfWeek(currentDate);
-        return `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`;
-      case 'day':
-        return format(currentDate, 'EEEE, MMMM d, yyyy');
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      setAuthStatus('unauthenticated');
+      setError('Authentication failed. Please sign in again.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const renderMonthView = () => {
-    const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(currentDate);
-    const calendarStart = startOfWeek(monthStart);
-    const calendarEnd = endOfWeek(monthEnd);
-    const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+  const loadCalendarData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
+      // Load events
+      const eventsResponse = await googleCalendarApi.getEvents();
+      setEvents(eventsResponse.items || []);
+
+      // Load task lists
+      const taskListsResponse = await googleCalendarApi.getTaskLists();
+      setTaskLists(taskListsResponse.items || []);
+
+      // Load tasks from all task lists
+      const allTasks = [];
+      for (const taskList of taskListsResponse.items || []) {
+        const tasksResponse = await googleCalendarApi.getTasks(taskList.id);
+        allTasks.push(...(tasksResponse.items || []));
+      }
+      setTasks(allTasks);
+
+      // Load out-of-office events
+      const outOfOfficeResponse = await googleCalendarApi.getOutOfOfficeEvents();
+      setOutOfOfficeEvents(outOfOfficeResponse.items || []);
+
+    } catch (error) {
+      console.error('Failed to load calendar data:', error);
+      setError('Failed to load calendar data. Please try refreshing the page.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderCalendarView = () => {
+    switch (currentView) {
+      case 'month':
+        return <MonthView />;
+      case 'week':
+      case '4days':
+        return <WeekView />;
+      case 'day':
+        return <DayView />;
+      case 'agenda':
+        return <AgendaView />;
+      case 'year':
+        return <MonthView />; // Simplified year view using month view
+      default:
+        return <MonthView />;
+    }
+  };
+
+  if (authStatus === 'checking') {
     return (
-      <div className="grid grid-cols-7">
-        {calendarDays.map((day) => {
-          const events = getEventsForDay(day);
-          const isCurrentMonth = isSameMonth(day, currentDate);
-          const isSelected = selectedDate && isSameDay(day, selectedDate);
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300">Loading calendar...</p>
+        </div>
+      </div>
+    );
+  }
 
-          return (
-            <div
-              key={day.toString()}
-              onClick={() => setSelectedDate(day)}
-              className={`min-h-[120px] p-2 border cursor-pointer transition ${
-                isCurrentMonth ? '' : 'bg-gray-50 dark:bg-gray-900 text-gray-400'
-              } ${isSelected ? 'ring-2 ring-primary-500' : ''} ${
-                isToday(day) ? 'bg-primary-50 dark:bg-primary-900/20' : ''
-              }`}
-            >
-              <div className="text-sm font-medium mb-2">{format(day, 'd')}</div>
-              <div className="space-y-1">
-                {events.slice(0, 3).map((event) => (
-                  <div
-                    key={event.id}
-                    onDoubleClick={() => handleDoubleClick(event)}
-                    className="text-xs p-1 rounded bg-primary-100 dark:bg-primary-800 text-primary-700 dark:text-primary-200 truncate border cursor-pointer"
-                    title={`${event.title} – ${format(event.start, 'HH:mm')} to ${format(event.end, 'HH:mm')}`}
-                  >
-                    {format(event.start, 'HH:mm')} {event.title}
-                  </div>
-                ))}
-                {events.length > 3 && (
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
-                    +{events.length - 3} more
-                  </div>
+  if (authStatus === 'unauthenticated') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="max-w-md w-full mx-4">
+          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-8 text-center">
+            <CalendarIcon className="w-16 h-16 text-primary-500 mx-auto mb-6" />
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              Google Calendar Integration
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              Connect your Google Calendar to access all four scheduling types: Meetings, Events, Out of Office, and Appointment Schedules.
+            </p>
+            <AuthButton />
+            
+            {authMessage && (
+              <div className={`mt-4 p-3 rounded-lg flex items-center space-x-2 ${
+                authMessage.includes('Successfully') 
+                  ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300' 
+                  : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+              }`}>
+                {authMessage.includes('Successfully') ? (
+                  <CheckCircle className="w-4 h-4" />
+                ) : (
+                  <AlertCircle className="w-4 h-4" />
                 )}
+                <span className="text-sm">{authMessage}</span>
               </div>
-            </div>
-          );
-        })}
+            )}
+          </div>
+        </div>
       </div>
     );
-  };
-
-  const renderDayView = () => {
-    const hours = Array.from({ length: 24 }, (_, i) => i);
-    const dayEvents = getEventsForDay(currentDate);
-
-    return (
-      <div className="space-y-2">
-        {hours.map((hour) => {
-          const hourEvents = dayEvents.filter((event) => event.start.getHours() === hour);
-          return (
-            <div key={hour} className="flex border-b min-h-[60px]">
-              <div className="w-20 p-3 text-sm text-gray-500 border-r">{format(setHours(setMinutes(new Date(), 0), hour), 'HH:mm')}</div>
-              <div className="flex-1 p-3 space-y-2">
-                {hourEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    onDoubleClick={() => handleDoubleClick(event)}
-                    className="p-2 rounded-lg bg-primary-100 dark:bg-primary-900/20 border text-sm"
-                  >
-                    <div className="font-medium">{event.title}</div>
-                    <div className="text-xs">
-                      {format(event.start, 'h:mm a')} - {format(event.end, 'h:mm a')}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
+  }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent flex items-center space-x-2">
-            <CalendarIcon className="w-8 h-8 text-primary-500" />
-            <span>Calendar</span>
-          </h1>
+      {/* Auth Success/Error Messages */}
+      {authMessage && (
+        <div className={`p-4 rounded-lg flex items-center space-x-2 ${
+          authMessage.includes('Successfully') 
+            ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700/50' 
+            : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700/50'
+        }`}>
+          {authMessage.includes('Successfully') ? (
+            <CheckCircle className="w-5 h-5" />
+          ) : (
+            <AlertCircle className="w-5 h-5" />
+          )}
+          <span>{authMessage}</span>
+        </div>
+      )}
 
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700/50 rounded-lg p-4">
           <div className="flex items-center space-x-2">
-            <button onClick={() => navigateDate('prev')} className="p-2 border rounded hover:shadow">
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <h2 className="text-xl font-semibold min-w-[250px] text-center">{getViewTitle()}</h2>
-            <button onClick={() => navigateDate('next')} className="p-2 border rounded hover:shadow">
-              <ChevronRight className="w-5 h-5" />
-            </button>
+            <AlertCircle className="w-5 h-5 text-red-500" />
+            <span className="text-red-700 dark:text-red-300">{error}</span>
           </div>
         </div>
+      )}
 
-        <div className="flex items-center space-x-3">
-          {/* View switcher */}
-          <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-            {[
-              { key: 'year', icon: Grid3X3 },
-              { key: 'month', icon: CalendarIcon },
-              { key: 'week', icon: List },
-              { key: 'day', icon: Eye },
-            ].map(({ key, icon: Icon }) => (
-              <button
-                key={key}
-                onClick={() => setView(key as CalendarView)}
-                className={`flex items-center space-x-1 px-3 py-1 rounded text-sm font-medium ${
-                  view === key ? 'bg-primary-500 text-white' : 'hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-              </button>
-            ))}
+      {/* Calendar Header */}
+      <div className="flex items-center justify-between">
+        <CalendarHeader />
+        <AuthButton />
+      </div>
+
+      {/* Scheduling Tabs */}
+      <SchedulingTabs />
+
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl">
+            <div className="flex items-center space-x-3">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-500"></div>
+              <span className="text-gray-700 dark:text-gray-300">Loading calendar data...</span>
+            </div>
           </div>
-
-          <button className="px-4 py-2 bg-gradient-to-r from-primary-500 to-accent-500 text-white rounded-lg hover:scale-105">
-            <Plus className="w-4 h-4 mr-1" />
-            Add Event
-          </button>
         </div>
-      </div>
+      )}
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow border overflow-hidden">
-        {view === 'month' && renderMonthView()}
-        {view === 'day' && renderDayView()}
-        {/* Week and Year views to be implemented */}
-      </div>
-
-      {/* Google Calendar Integration */}
-      <GoogleCalendarConnect />
+      {/* Calendar View */}
+      {renderCalendarView()}
     </div>
   );
-}
+};
+
+export default Calendar;
