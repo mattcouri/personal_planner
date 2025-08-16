@@ -95,7 +95,7 @@ export default function ProjectModal({ onClose }: ProjectModalProps) {
           </h4>
           
           <div className="space-y-3">
-            {state.projects.map(project => (
+            {state.projects.filter(project => project.id !== 'unclassified').map(project => (
               <div key={project.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
                 <div className="flex items-center space-x-3 flex-1">
                   <Folder className="w-5 h-5 text-primary-500" />
@@ -130,7 +130,7 @@ export default function ProjectModal({ onClose }: ProjectModalProps) {
                     <Edit3 className="w-4 h-4" />
                   </button>
                   
-                  {project.id !== 'default' && (
+                  {project.id !== 'unclassified' && (
                     <button
                       onClick={() => handleDeleteProject(project.id)}
                       className="p-2 text-gray-400 hover:text-red-500 transition-colors duration-200"
@@ -141,6 +141,21 @@ export default function ProjectModal({ onClose }: ProjectModalProps) {
                 </div>
               </div>
             ))}
+            
+            {/* Show Unclassified as read-only */}
+            <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 opacity-75">
+              <div className="flex items-center space-x-3">
+                <Folder className="w-5 h-5 text-gray-500" />
+                <div className="flex-1">
+                  <h5 className="font-medium text-gray-700 dark:text-gray-300">
+                    Unclassified
+                  </h5>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {getProjectTaskCount('unclassified')} tasks • Default project (cannot be deleted)
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

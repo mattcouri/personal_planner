@@ -87,6 +87,7 @@ const initialState: AppState = {
   todos: [],
   dailyPlans: {},
   projects: [
+    { id: 'unclassified', name: 'Unclassified' },
     { id: 'work', name: 'Work Projects' },
     { id: 'personal', name: 'Personal Tasks' },
     { id: 'health', name: 'Health & Fitness' },
@@ -263,7 +264,7 @@ function reducer(state: AppState, action: Action): AppState {
         // Move todos from deleted project to default project
         todos: state.todos.map(todo =>
           todo.projectId === action.payload
-            ? { ...todo, projectId: 'work' }
+            ? { ...todo, projectId: 'unclassified' }
             : todo
         ),
       };

@@ -324,7 +324,11 @@ export default function TodoModal({
               onChange={(e) => setFormData({ ...formData, projectId: e.target.value })}
               className="w-full px-3 py-2 rounded-lg border bg-white dark:bg-gray-700 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             >
-              {state.projects.map(project => (
+              {[...state.projects].sort((a, b) => {
+                if (a.id === 'unclassified') return -1;
+                if (b.id === 'unclassified') return 1;
+                return 0;
+              }).map(project => (
                 <option key={project.id} value={project.id}>{project.name}</option>
               ))}
             </select>
