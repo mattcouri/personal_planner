@@ -1,5 +1,4 @@
 // Google OAuth 2.0 Authentication Service
-import { GoogleAuth } from 'google-auth-library';
 
 export interface AuthConfig {
   clientId: string;
@@ -18,7 +17,6 @@ export interface AuthTokens {
 
 class GoogleAuthService {
   private config: AuthConfig;
-  private auth: GoogleAuth | null = null;
 
   constructor() {
     this.config = {
@@ -33,23 +31,6 @@ class GoogleAuthService {
         'https://www.googleapis.com/auth/userinfo.profile'
       ]
     };
-  }
-
-  // Initialize Google Auth
-  async initialize(): Promise<void> {
-    try {
-      this.auth = new GoogleAuth({
-        scopes: this.config.scopes,
-        credentials: {
-          client_id: this.config.clientId,
-          client_secret: this.config.clientSecret,
-          redirect_uris: [this.config.redirectUri]
-        }
-      });
-    } catch (error) {
-      console.error('Failed to initialize Google Auth:', error);
-      throw error;
-    }
   }
 
   // Generate OAuth URL
