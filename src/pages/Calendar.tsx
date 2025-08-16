@@ -55,6 +55,8 @@ const Calendar: React.FC = () => {
   }, [searchParams]);
 
   const initializeCalendar = async () => {
+    console.log('🚀 ===== INITIALIZE CALENDAR STARTED =====');
+    
     try {
       setLoading(true);
       
@@ -65,37 +67,42 @@ const Calendar: React.FC = () => {
       console.log('🔐 Credentials status:', credentialsStatus);
       
       if (!credentialsStatus.hasCredentials) {
-        console.log('❌ No credentials configured');
+        console.log('❌ No credentials configured - stopping here');
         setAuthStatus('unauthenticated');
         return;
       }
       
       if (!credentialsStatus.hasTokens) {
-        console.log('❌ No auth tokens found');
+        console.log('❌ No auth tokens found - stopping here');
         setAuthStatus('unauthenticated');
         return;
       }
       
+      console.log('✅ Both credentials and tokens found - proceeding to validate token');
+      
       // Try to get a valid access token (this will refresh if needed)
       try {
-        await googleAuthService.getValidAccessToken();
-        console.log('✅ Valid access token obtained');
+        const token = await googleAuthService.getValidAccessToken();
+        console.log('✅ Valid access token obtained:', token ? 'YES' : 'NO');
         setAuthStatus('authenticated');
-        // IMPORTANT: Actually load the calendar data after authentication
+        
+        console.log('📞 About to call loadCalendarData...');
         await loadCalendarData();
+        
         await loadCalendarData();
       } catch (tokenError) {
-        console.log('❌ Token validation failed:', tokenError);
+        console.error('❌ Token validation failed:', tokenError);
         setAuthStatus('unauthenticated');
         setError('Authentication expired. Please sign in again.');
       }
       
     } catch (error) {
-      console.error('Auth check failed:', error);
+      console.error('💥 Initialize calendar failed:', error);
       setAuthStatus('unauthenticated');
       setError('Authentication failed. Please sign in again.');
     } finally {
       setLoading(false);
+      console.log('🏁 Initialize calendar completed');
     }
   };
 

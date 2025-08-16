@@ -251,9 +251,18 @@ class GoogleAuthService {
 
   // Get stored credentials status
   getCredentialsStatus(): { hasCredentials: boolean; hasTokens: boolean } {
+    const hasCredentials = !!(this.getClientId() && this.getClientSecret());
+    const tokens = this.getStoredTokens();
+    const hasTokens = !!tokens?.access_token;
+    
+    console.log('📊 Credentials Status Check:');
+    console.log('  - Client ID:', this.getClientId() ? 'YES' : 'NO');
+    console.log('  - Client Secret:', this.getClientSecret() ? 'YES' : 'NO');
+    console.log('  - Stored Tokens:', hasTokens ? 'YES' : 'NO');
+    
     return {
-      hasCredentials: this.hasCredentials(),
-      hasTokens: !!this.getStoredTokens()?.access_token
+      hasCredentials,
+      hasTokens
     };
   }
 }

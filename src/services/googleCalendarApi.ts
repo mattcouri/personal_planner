@@ -11,8 +11,13 @@ class GoogleCalendarApiService {
     url: string,
     options: RequestInit = {}
   ): Promise<T> {
+    console.log('🌐 ===== API REQUEST =====');
+    console.log('URL:', url);
+    console.log('Method:', options.method || 'GET');
+    
     try {
       const accessToken = await googleAuthService.getValidAccessToken();
+      console.log('🔑 Got access token for API call');
       
       const response = await fetch(url, {
         ...options,
@@ -23,13 +28,20 @@ class GoogleCalendarApiService {
         },
       });
 
+      console.log('📡 API Response Status:', response.status);
+      console.log('📡 API Response OK:', response.ok);
+
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API Error Response:', errorText);
         throw new Error(`API request failed: ${response.status} ${response.statusText}`);
       }
 
-      return await response.json();
+      const data = await response.json();
+      console.log('✅ API Success - Data received:', !!data);
+      return data;
     } catch (error) {
-      console.error('API request failed:', error);
+      console.error('💥 API Request Failed:', error);
       throw error;
     }
   }
