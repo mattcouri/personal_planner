@@ -212,6 +212,11 @@ export default function TodoList() {
         <div className="flex items-center space-x-3">
           <a
             href="/completed-tasks"
+            onClick={(e) => {
+              e.preventDefault();
+              // Navigate to completed tasks page
+              window.location.href = '/completed-tasks';
+            }}
             className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105"
           >
             <CheckSquare className="w-4 h-4" />
