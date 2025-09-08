@@ -3,6 +3,7 @@ import { format, isSameDay } from 'date-fns';
 import { useCalendarStore } from '../../stores/calendarStore';
 import EventModal from './EventModal';
 import EventDetailModal from './EventDetailModal';
+import { CheckSquare } from 'lucide-react';
 
 const DayView: React.FC = () => {
   const {
@@ -93,8 +94,6 @@ const DayView: React.FC = () => {
     const duration = event.end?.dateTime && event.start?.dateTime
       ? (new Date(event.end.dateTime).getTime() - new Date(event.start.dateTime).getTime()) / (1000 * 60)
       : 60;
-    const startMinute = taskDueDate.getMinutes();
-    const height = 24; // 30 minutes visual duration
     
     const height = Math.max((duration / 60) * 80, 40); // Minimum 40px height
 
@@ -108,9 +107,41 @@ const DayView: React.FC = () => {
 
     return (
       <div
+        key={event.id}
+        className={`p-3 rounded-lg border cursor-pointer hover:shadow-md transition-all duration-200 mb-2 border-l-4 ${colorClass}`}
+        style={{ minHeight: `${height}px` }}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleEventClick(event, 'event');
+        }}
+        title={event.summary}
+      >
+        <div className="font-medium text-sm mb-1">{event.summary}</div>
+        {event.start?.dateTime && (
+          <div className="text-xs opacity-75 mb-1">
+            {format(new Date(event.start.dateTime), 'HH:mm')}
+            {event.end?.dateTime && ` - ${format(new Date(event.end.dateTime), 'HH:mm')}`}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderTaskInHour = (task: any) => {
+    const isCompleted = task.status === 'completed';
+    const taskDueDate = new Date(task.due);
+    const timeStr = format(taskDueDate, 'HH:mm');
+    const startMinute = taskDueDate.getMinutes();
+    const height = 24; // 30 minutes visual duration
+    
+    return (
+      <div
+        key={task.id}
+        className={`p-3 rounded-lg border cursor-pointer hover:shadow-md transition-all duration-200 mb-2 border-l-4 relative ${
+          isCompleted
             ? 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400'
             : 'bg-blue-500 text-white'
-        style={{ minHeight: `${height}px` }}
+        }`}
         style={{ 
           height: `${height}px`,
           top: `${(startMinute / 60) * 80}px` // Adjust for day view scaling
@@ -122,13 +153,9 @@ const DayView: React.FC = () => {
         title={task.title}
       >
         <div className={`flex items-center space-x-1 ${isCompleted ? 'line-through' : ''}`}>
-        {event.start?.dateTime && (
-          <div className="text-xs opacity-75 mb-1">
-            {format(new Date(event.start.dateTime), 'HH:mm')}
-            {event.end?.dateTime && ` - ${format(new Date(event.end.dateTime), 'HH:mm')}`}
           <span className="font-medium truncate">{task.title}</span>
           <span className="text-xs opacity-75">{timeStr}</span>
-        )}
+        </div>
       </div>
     );
   };
@@ -265,38 +292,6 @@ const DayView: React.FC = () => {
           );
         })}
       </div>
-    </div>
-  );
-};
-
-const renderTaskInHour = (task: any) => {
-  const isCompleted = task.status === 'completed';
-  const taskDueDate = new Date(task.due);
-  const timeStr = format(taskDueDate, 'HH:mm');
-  
-  return (
-    <div
-      key={task.id}
-      className={`p-3 rounded-lg border cursor-pointer hover:shadow-md transition-all duration-200 mb-2 border-l-4 ${
-        isCompleted 
-          ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-400 dark:border-gray-500'
-          : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-500'
-      }`}
-      onClick={(e) => {
-        e.stopPropagation();
-        // handleEventClick(task, 'task'); // You'll need to pass this function down
-      }}
-    >
-      <div className={`flex items-center space-x-2 ${isCompleted ? 'line-through' : ''}`}>
-        <CheckSquare className="w-4 h-4" />
-        <div className="font-medium text-sm mb-1">{task.title}</div>
-      </div>
-      <div className="text-xs opacity-75 mb-1">
-        {timeStr}
-      </div>
-      {task.notes && (
-        <div className="text-xs opacity-75 line-clamp-2">{task.notes}</div>
-      )}
     </div>
   );
 };
