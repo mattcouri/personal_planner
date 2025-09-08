@@ -1,4 +1,5 @@
 import React from 'react';
+import React, { useState } from 'react';
 import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { useCalendarStore } from '../../stores/calendarStore';
 import { Clock, CheckSquare, Coffee, MapPin, Users } from 'lucide-react';
