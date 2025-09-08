@@ -20,9 +20,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const root = window.document.documentElement;
     if (isDark) {
       root.classList.add('dark');
+      console.log('💾 Saving theme preference: dark');
       localStorage.setItem('theme', 'dark');
     } else {
       root.classList.remove('dark');
+      console.log('💾 Saving theme preference: light');
       localStorage.setItem('theme', 'light');
     }
   }, [isDark]);

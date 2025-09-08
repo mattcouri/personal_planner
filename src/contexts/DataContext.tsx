@@ -300,6 +300,41 @@ function reducer(state: AppState, action: Action): AppState {
 export function DataProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
+  // Load data from localStorage on app start
+  useEffect(() => {
+    const savedData = localStorage.getItem('daily-organizer-data');
+    if (savedData) {
+      try {
+        const parsedData = JSON.parse(savedData);
+        // Restore saved state
+        Object.keys(parsedData).forEach(key => {
+          if (parsedData[key] && Array.isArray(parsedData[key])) {
+            dispatch({ type: `SET_${key.toUpperCase()}` as any, payload: parsedData[key] });
+          }
+        });
+      } catch (error) {
+        console.error('Failed to load saved data:', error);
+      }
+    }
+  }, []);
+
+  // Save data to localStorage whenever state changes
+  useEffect(() => {
+    const dataToSave = {
+      todos: state.todos,
+      projects: state.projects,
+      dailyPlans: state.dailyPlans,
+      healthScores: state.healthScores,
+      habits: state.habits,
+      financialAccounts: state.financialAccounts,
+      financialTransactions: state.financialTransactions,
+      financialGoals: state.financialGoals,
+      passwords: state.passwords
+    };
+    
+    localStorage.setItem('daily-organizer-data', JSON.stringify(dataToSave));
+  }, [state]);
+
   useEffect(() => {
     if (state.events.length === 0 && state.todos.length === 0) {
       const now = new Date();

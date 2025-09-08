@@ -192,12 +192,14 @@ class GoogleAuthService {
       ...tokens,
       expires_at: expiresAt
     };
+    console.log('💾 Storing Google auth tokens to localStorage');
     localStorage.setItem('google_auth_tokens', JSON.stringify(tokenData));
   }
 
   // Get stored tokens
   private getStoredTokens(): (AuthTokens & { expires_at: number }) | null {
     const stored = localStorage.getItem('google_auth_tokens');
+    console.log('📖 Reading Google auth tokens from localStorage:', !!stored);
     return stored ? JSON.parse(stored) : null;
   }
 
