@@ -143,45 +143,57 @@ const Calendar: React.FC = () => {
       
       // Transform Google Calendar events to our format
       const transformedEvents = (eventsResponse.items || []).map(event => {
-        console.log('🔍 Processing event:', event.summary, event);
+        console.log('🔍 TRANSFORMING EVENT:', event.summary);
+        console.log('📅 Raw start:', event.start);
+        console.log('📅 Raw end:', event.end);
         
         const transformedEvent = {
           ...event,
           summary: event.summary || event.title || 'Untitled Event',
         };
 
-        // Normalize start time
+        // Handle all-day events differently from timed events
         if (event.start?.dateTime) {
+          // Timed event - use dateTime as-is
           transformedEvent.start = {
             ...event.start,
             dateTime: new Date(event.start.dateTime).toISOString()
           };
+          console.log('⏰ Timed event start processed:', transformedEvent.start);
         } else if (event.start?.date) {
-          // Handle all-day events
+          // All-day event - keep as date, don't convert to dateTime
           transformedEvent.start = {
-            ...event.start,
-            dateTime: new Date(event.start.date).toISOString()
+            date: event.start.date // Keep original date format
           };
+          console.log('🌅 All-day event start processed:', transformedEvent.start);
         } else {
           transformedEvent.start = { dateTime: new Date().toISOString() };
         }
 
-        // Normalize end time
+        // Handle end time
         if (event.end?.dateTime) {
+          // Timed event - use dateTime as-is
           transformedEvent.end = {
             ...event.end,
             dateTime: new Date(event.end.dateTime).toISOString()
           };
+          console.log('⏰ Timed event end processed:', transformedEvent.end);
         } else if (event.end?.date) {
-          // Handle all-day events
+          // All-day event - keep as date, don't convert to dateTime
           transformedEvent.end = {
-            ...event.end,
-            dateTime: new Date(event.end.date).toISOString()
+            date: event.end.date // Keep original date format
           };
+          console.log('🌅 All-day event end processed:', transformedEvent.end);
         } else {
           transformedEvent.end = { dateTime: new Date(Date.now() + 3600000).toISOString() };
         }
 
+        console.log('✅ Final transformed event:', {
+          summary: transformedEvent.summary,
+          start: transformedEvent.start,
+          end: transformedEvent.end,
+          isAllDay: !transformedEvent.start.dateTime
+        });
         return transformedEvent;
       });
       

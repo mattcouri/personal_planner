@@ -16,6 +16,7 @@ import {
 import { format } from 'date-fns';
 import { useCalendarStore } from '../../stores/calendarStore';
 import { googleCalendarApi } from '../../services/googleCalendarApi';
+import EventModal from './EventModal';
 
 interface EventDetailModalProps {
   isOpen: boolean;
@@ -35,6 +36,7 @@ const EventDetailModal: React.FC<EventDetailModalProps> = ({
   const { updateEvent, deleteEvent, updateTask, deleteTask } = useCalendarStore();
   const [isDeleting, setIsDeleting] = useState(false);
   const [rsvpStatus, setRsvpStatus] = useState(event?.attendees?.find((a: any) => a.self)?.responseStatus || 'needsAction');
+  const [showEditModal, setShowEditModal] = useState(false);
 
   if (!isOpen || !event) return null;
 
@@ -120,6 +122,15 @@ const EventDetailModal: React.FC<EventDetailModalProps> = ({
     }
   };
 
+  const handleEdit = () => {
+    setShowEditModal(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    onClose(); // Close the detail modal too
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
   };
@@ -184,7 +195,7 @@ const EventDetailModal: React.FC<EventDetailModalProps> = ({
             </div>
             <div className="flex items-center space-x-2">
               <button
-                onClick={onEdit}
+                onClick={handleEdit}
                 className="p-2 text-gray-400 hover:text-blue-500 transition-colors duration-200"
               >
                 <Edit3 className="w-4 h-4" />
@@ -244,6 +255,13 @@ const EventDetailModal: React.FC<EventDetailModalProps> = ({
             </div>
           </div>
         </div>
+        
+        {/* Edit Modal */}
+        <EventModal
+          isOpen={showEditModal}
+          onClose={handleCloseEditModal}
+          editingEvent={event}
+        />
       </div>
     );
   }
@@ -458,6 +476,13 @@ const EventDetailModal: React.FC<EventDetailModalProps> = ({
           )}
         </div>
       </div>
+      
+      {/* Edit Modal */}
+      <EventModal
+        isOpen={showEditModal}
+        onClose={handleCloseEditModal}
+        editingEvent={event}
+      />
     </div>
   );
 };

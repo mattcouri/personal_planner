@@ -143,7 +143,9 @@ const WeekView: React.FC = () => {
     return events.filter(event => {
       // Only include events that have a date (not dateTime) - these are all-day events
       if (event.start?.date && !event.start?.dateTime) {
-        const eventDate = new Date(event.start.date + 'T00:00:00');
+        // Parse date without timezone conversion
+        const eventDate = new Date(event.start.date + 'T12:00:00'); // Use noon to avoid timezone issues
+        console.log(`📅 All-day event "${event.summary}" date: ${event.start.date} -> parsed: ${eventDate} -> same day as ${format(day, 'yyyy-MM-dd')}? ${isSameDay(eventDate, day)}`);
         console.log(`📅 All-day event "${event.summary}" date: ${event.start.date} -> parsed: ${eventDate} -> same day as ${format(day, 'yyyy-MM-dd')}? ${isSameDay(eventDate, day)}`);
         return isSameDay(eventDate, day);
       }

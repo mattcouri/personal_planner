@@ -44,8 +44,9 @@ const MonthView: React.FC = () => {
   const getEventsForDay = (day: Date) => {
     const dayEvents = events.filter(event => {
       if (event.start?.date) {
-        // All-day events - parse date correctly
-        const eventDate = new Date(event.start.date + 'T00:00:00');
+        // All-day events - parse date without timezone conversion
+        const eventDate = new Date(event.start.date + 'T12:00:00'); // Use noon to avoid timezone issues
+        console.log(`📅 Month view - All-day event "${event.summary}" date: ${event.start.date} -> parsed: ${eventDate} -> same day as ${format(day, 'yyyy-MM-dd')}? ${isSameDay(eventDate, day)}`);
         return isSameDay(eventDate, day);
       }
       if (event.start?.dateTime) {
@@ -210,7 +211,10 @@ const MonthView: React.FC = () => {
                 {dayData.events
                   .filter(event => event.start?.date && !event.start?.dateTime)
                   .slice(0, 2)
-                  .map(event => renderEventItem(event, 'event', true))
+                  .map(event => {
+                    console.log(`📅 Rendering all-day event in month view: "${event.summary}" on ${format(day, 'yyyy-MM-dd')}`);
+                    return renderEventItem(event, 'event', true);
+                  })
                 }
               </div>
 

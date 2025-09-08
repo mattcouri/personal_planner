@@ -59,11 +59,16 @@ const EventModal: React.FC<EventModalProps> = ({
   // Initialize form with selected date/time or editing event
   useEffect(() => {
     if (editingEvent) {
+      console.log('🔍 EDITING EVENT - Raw data:', editingEvent);
+      
       // Determine if this is a task or event
       if (editingEvent.kind === 'tasks#task' || editingEvent.due) {
+        console.log('📝 Editing TASK');
         setActiveTab('task');
         
         const dueDate = editingEvent.due ? new Date(editingEvent.due) : new Date();
+        console.log('📅 Task due date parsed:', dueDate);
+        
         setFormData({
           ...formData,
           title: editingEvent.title || '',
@@ -76,11 +81,35 @@ const EventModal: React.FC<EventModalProps> = ({
         });
       } else {
         // It's an event
+        console.log('📅 Editing EVENT');
         setActiveTab('event');
         
-        const startDate = new Date(editingEvent.start.dateTime || editingEvent.start.date);
-        const endDate = new Date(editingEvent.end.dateTime || editingEvent.end.date);
+        // Fix timezone parsing for all-day events
+        let startDate: Date;
+        let endDate: Date;
         const isAllDay = !editingEvent.start.dateTime;
+        
+        if (isAllDay) {
+          // All-day events: parse date without timezone conversion
+          startDate = new Date(editingEvent.start.date + 'T00:00:00');
+          endDate = new Date(editingEvent.end.date + 'T00:00:00');
+          console.log('🌅 All-day event dates:', {
+            startRaw: editingEvent.start.date,
+            endRaw: editingEvent.end.date,
+            startParsed: startDate,
+            endParsed: endDate
+          });
+        } else {
+          // Timed events: use dateTime
+          startDate = new Date(editingEvent.start.dateTime);
+          endDate = new Date(editingEvent.end.dateTime);
+          console.log('⏰ Timed event dates:', {
+            startRaw: editingEvent.start.dateTime,
+            endRaw: editingEvent.end.dateTime,
+            startParsed: startDate,
+            endParsed: endDate
+          });
+        }
         
         setFormData({
           ...formData,
@@ -94,6 +123,7 @@ const EventModal: React.FC<EventModalProps> = ({
           location: editingEvent.location || '',
           guests: editingEvent.attendees?.map(a => a.email).join(', ') || '',
           addGoogleMeet: !!editingEvent.conferenceData,
+          allDay: isAllDay,
         });
       }
     } else if (selectedDate) {
@@ -196,13 +226,15 @@ const EventModal: React.FC<EventModalProps> = ({
         if (formData.allDay) {
           // All-day event: same start and end date, no time
           eventData.start = { 
-            date: formData.startDate,
-            timeZone: formData.timeZone 
+            date: formData.startDate
           };
           eventData.end = { 
-            date: formData.startDate, // Same date for all-day events
-            timeZone: formData.timeZone 
+            date: formData.startDate // Same date for all-day events
           };
+          console.log('🌅 Creating all-day event:', {
+            start: eventData.start,
+            end: eventData.end
+          });
         } else {
           // Timed event: specific start and end times
           const startDateTime = new Date(`${formData.startDate}T${formData.startTime}:00`);
@@ -216,6 +248,10 @@ const EventModal: React.FC<EventModalProps> = ({
             dateTime: endDateTime.toISOString(),
             timeZone: formData.timeZone 
           };
+          console.log('⏰ Creating timed event:', {
+            start: eventData.start,
+            end: eventData.end
+          });
         }
 
         if (editingEvent && !editingEvent.kind?.includes('task')) {
@@ -271,7 +307,7 @@ const EventModal: React.FC<EventModalProps> = ({
     setFormData({
       ...formData,
       allDay: checked,
-      endDate: checked ? formData.startDate : formData.endDate, // Same date for all-day
+      endDate: formData.startDate, // Always same date for all-day events
       startTime: checked ? '' : '12:00',
       endTime: checked ? '' : '13:00'
     });
@@ -333,7 +369,7 @@ const EventModal: React.FC<EventModalProps> = ({
                       onChange={(e) => setFormData({ 
                         ...formData, 
                         startDate: e.target.value,
-                        endDate: formData.allDay ? e.target.value : formData.endDate // Keep same date for all-day
+                        endDate: e.target.value // Always same date for all-day events
                       })}
                       className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
@@ -349,14 +385,19 @@ const EventModal: React.FC<EventModalProps> = ({
                         <input
                           type="date"
                           value={formData.endDate}
-                          onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                          onChange={(e) => setFormData({ 
+                            ...formData, 
+                            endDate: formData.allDay ? formData.startDate : e.target.value 
+                          })}
                           className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          disabled={formData.allDay}
                         />
                         <input
                           type="time"
                           value={formData.endTime}
                           onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
                           className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                          disabled={formData.allDay}
                         />
                       </>
                     )}
@@ -372,6 +413,11 @@ const EventModal: React.FC<EventModalProps> = ({
                       />
                       <span className="text-sm text-gray-700 dark:text-gray-300">All day</span>
                     </label>
+                    {formData.allDay && (
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        End date will match start date for all-day events
+                      </span>
+                    )}
                   </div>
                 </>
               ) : (

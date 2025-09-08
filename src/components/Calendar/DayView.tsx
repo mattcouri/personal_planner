@@ -52,7 +52,10 @@ const DayView: React.FC = () => {
   const getAllDayEventsForDay = () => {
     return events.filter(event => {
       if (event.start?.date && !event.start?.dateTime) {
-        return isSameDay(new Date(event.start.date), currentDate);
+        // Parse date without timezone conversion
+        const eventDate = new Date(event.start.date + 'T12:00:00'); // Use noon to avoid timezone issues
+        console.log(`📅 Day view - All-day event "${event.summary}" date: ${event.start.date} -> parsed: ${eventDate} -> same day as ${format(currentDate, 'yyyy-MM-dd')}? ${isSameDay(eventDate, currentDate)}`);
+        return isSameDay(eventDate, currentDate);
       }
       return false;
     });

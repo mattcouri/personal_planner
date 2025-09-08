@@ -74,7 +74,19 @@ class GoogleCalendarApiService {
     if (timeMin) params.append('timeMin', timeMin);
     if (timeMax) params.append('timeMax', timeMax);
 
-    return this.makeRequest(`${this.baseUrl}/calendars/${calendarId}/events?${params}`);
+    const response = await this.makeRequest<{ items: CalendarEvent[] }>(`${this.baseUrl}/calendars/${calendarId}/events?${params}`);
+    
+    // Debug timezone issues
+    console.log('🔍 RAW GOOGLE CALENDAR API RESPONSE:');
+    response.items?.slice(0, 3).forEach(event => {
+      console.log(`📅 Event: "${event.summary}"`, {
+        startRaw: event.start,
+        endRaw: event.end,
+        isAllDay: !event.start?.dateTime
+      });
+    });
+    
+    return response;
   }
 
   // Get all tasks from all task lists

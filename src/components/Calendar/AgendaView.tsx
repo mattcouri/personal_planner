@@ -22,8 +22,9 @@ const AgendaView: React.FC = () => {
   const getItemsForDay = (day: Date) => {
     const dayEvents = events.filter(event => {
       if (event.start?.date) {
-        // All-day events - parse date correctly
-        const eventDate = new Date(event.start.date + 'T00:00:00');
+        // All-day events - parse date without timezone conversion
+        const eventDate = new Date(event.start.date + 'T12:00:00'); // Use noon to avoid timezone issues
+        console.log(`📅 Agenda view - All-day event "${event.summary}" date: ${event.start.date} -> parsed: ${eventDate} -> same day as ${format(day, 'yyyy-MM-dd')}? ${isSameDay(eventDate, day)}`);
         return isSameDay(eventDate, day);
       }
       if (event.start?.dateTime) {
