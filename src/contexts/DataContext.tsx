@@ -152,7 +152,7 @@ const DataContext = createContext<{
   state: AppState;
   dispatch: React.Dispatch<Action>;
 }>({
-  state: initialState,
+  state: getInitialState(),
   dispatch: () => null,
 });
 
