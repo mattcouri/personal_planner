@@ -124,7 +124,18 @@ const Calendar: React.FC = () => {
       console.log('📅 Fetching events...');
       const eventsResponse = await googleCalendarApi.getEvents();
       console.log('📅 Events response:', eventsResponse);
-      setEvents(eventsResponse.items || []);
+      
+      // Transform Google Calendar events to our format
+      const transformedEvents = (eventsResponse.items || []).map(event => ({
+        ...event,
+        // Ensure we have the right structure
+        summary: event.summary || event.title || 'Untitled Event',
+        start: event.start || { dateTime: new Date().toISOString() },
+        end: event.end || { dateTime: new Date(Date.now() + 3600000).toISOString() }
+      }));
+      
+      console.log('📅 Transformed events:', transformedEvents);
+      setEvents(transformedEvents);
 
       // Load task lists
       console.log('📋 Fetching task lists...');

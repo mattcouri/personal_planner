@@ -35,11 +35,14 @@ const MonthView: React.FC = () => {
 
   const getEventsForDay = (day: Date) => {
     const dayEvents = events.filter(event => {
-      if (event.start.date) {
+      if (event.start?.date) {
         return isSameDay(new Date(event.start.date), day);
       }
-      if (event.start.dateTime) {
+      if (event.start?.dateTime) {
         return isSameDay(new Date(event.start.dateTime), day);
+      }
+      if (event.start instanceof Date) {
+        return isSameDay(event.start, day);
       }
       return false;
     });
@@ -52,11 +55,14 @@ const MonthView: React.FC = () => {
     });
 
     const dayOutOfOffice = outOfOfficeEvents.filter(event => {
-      if (event.start.date) {
+      if (event.start?.date) {
         return isSameDay(new Date(event.start.date), day);
       }
-      if (event.start.dateTime) {
+      if (event.start?.dateTime) {
         return isSameDay(new Date(event.start.dateTime), day);
+      }
+      if (event.start instanceof Date) {
+        return isSameDay(event.start, day);
       }
       return false;
     });

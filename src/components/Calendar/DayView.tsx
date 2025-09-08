@@ -15,17 +15,23 @@ const DayView: React.FC = () => {
 
   const getEventsForHour = (hour: number) => {
     const hourEvents = events.filter(event => {
-      if (event.start.dateTime) {
+      if (event.start?.dateTime) {
         const eventDate = new Date(event.start.dateTime);
         return isSameDay(eventDate, currentDate) && eventDate.getHours() === hour;
+      }
+      if (event.start instanceof Date) {
+        return isSameDay(event.start, currentDate) && event.start.getHours() === hour;
       }
       return false;
     });
 
     const hourOutOfOffice = outOfOfficeEvents.filter(event => {
-      if (event.start.dateTime) {
+      if (event.start?.dateTime) {
         const eventDate = new Date(event.start.dateTime);
         return isSameDay(eventDate, currentDate) && eventDate.getHours() === hour;
+      }
+      if (event.start instanceof Date) {
+        return isSameDay(event.start, currentDate) && event.start.getHours() === hour;
       }
       return false;
     });

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { format, startOfWeek, addDays, isSameDay, isToday, addMinutes } from 'date-fns';
+import { format, startOfWeek, addDays, isSameDay, isToday } from 'date-fns';
 import { useCalendarStore } from '../../stores/calendarStore';
 import { googleCalendarApi } from '../../services/googleCalendarApi';
 
@@ -39,22 +39,53 @@ const WeekView: React.FC = () => {
   };
 
   const getEventsForDayAndHour = (day: Date, hour: number) => {
+    console.log(`🔍 Getting events for ${format(day, 'yyyy-MM-dd')} hour ${hour}`);
+    console.log('📅 Total events in store:', events.length);
+    
     const dayEvents = events.filter(event => {
-      if (event.start.dateTime) {
-        const eventDate = new Date(event.start.dateTime);
-        return isSameDay(eventDate, day) && eventDate.getHours() === hour;
+      // Handle both dateTime and date formats
+      let eventDate: Date | null = null;
+      
+      if (event.start?.dateTime) {
+        eventDate = new Date(event.start.dateTime);
+      } else if (event.start?.date) {
+        eventDate = new Date(event.start.date);
+      } else if (event.start instanceof Date) {
+        eventDate = event.start;
       }
-      return false;
+      
+      if (!eventDate) {
+        console.log('❌ Event has no valid start date:', event);
+        return false;
+      }
+      
+      const isSameDay = eventDate.toDateString() === day.toDateString();
+      const isSameHour = eventDate.getHours() === hour;
+      
+      if (isSameDay && isSameHour) {
+        console.log('✅ Found event for this slot:', event.summary || event.title);
+      }
+      
+      return isSameDay && isSameHour;
     });
 
     const dayOutOfOffice = outOfOfficeEvents.filter(event => {
-      if (event.start.dateTime) {
-        const eventDate = new Date(event.start.dateTime);
-        return isSameDay(eventDate, day) && eventDate.getHours() === hour;
+      let eventDate: Date | null = null;
+      
+      if (event.start?.dateTime) {
+        eventDate = new Date(event.start.dateTime);
+      } else if (event.start?.date) {
+        eventDate = new Date(event.start.date);
+      } else if (event.start instanceof Date) {
+        eventDate = event.start;
       }
-      return false;
+      
+      if (!eventDate) return false;
+      
+      return eventDate.toDateString() === day.toDateString() && eventDate.getHours() === hour;
     });
 
+    console.log(`📊 Found ${dayEvents.length} events and ${dayOutOfOffice.length} out-of-office for ${format(day, 'yyyy-MM-dd')} ${hour}:00`);
     return { events: dayEvents, outOfOffice: dayOutOfOffice };
   };
 
@@ -92,38 +123,71 @@ const WeekView: React.FC = () => {
   };
 
   const renderEvent = (event: any, type: 'event' | 'outOfOffice') => {
-    const duration = event.end?.dateTime && event.start?.dateTime
-      ? (new Date(event.end.dateTime).getTime() - new Date(event.start.dateTime).getTime()) / (1000 * 60)
-      : 60;
+    console.log('🎨 Rendering event:', event.summary || event.title, 'type:', type);
+    
+    // Calculate duration and positioning
+    let duration = 60; // Default 1 hour
+    let startMinute = 0;
+    
+    if (event.start?.dateTime && event.end?.dateTime) {
+      const start = new Date(event.start.dateTime);
+      const end = new Date(event.end.dateTime);
+      duration = (end.getTime() - start.getTime()) / (1000 * 60);
+      startMinute = start.getMinutes();
+    } else if (event.start instanceof Date && event.end instanceof Date) {
+      duration = (event.end.getTime() - event.start.getTime()) / (1000 * 60);
+      startMinute = event.start.getMinutes();
+    }
     
     const height = Math.max((duration / 60) * 48, 20);
-    const startMinute = event.start?.dateTime ? new Date(event.start.dateTime).getMinutes() : 0;
     const topOffset = (startMinute / 60) * 48;
 
+    // Google Calendar colors
     const colorClass = type === 'outOfOffice'
-      ? 'bg-orange-400 text-white border-orange-500'
-      : 'bg-blue-400 text-white border-blue-500';
+      ? 'bg-orange-500 text-white border-l-4 border-orange-600'
+      : 'bg-blue-500 text-white border-l-4 border-blue-600';
+
+    const title = event.summary || event.title || 'Untitled Event';
+    const location = event.location || '';
+    
+    let timeDisplay = '';
+    if (event.start?.dateTime) {
+      const start = new Date(event.start.dateTime);
+      const end = event.end?.dateTime ? new Date(event.end.dateTime) : null;
+      timeDisplay = format(start, 'HH:mm');
+      if (end) {
+        timeDisplay += ` - ${format(end, 'HH:mm')}`;
+      }
+    } else if (event.start instanceof Date) {
+      timeDisplay = format(event.start, 'HH:mm');
+      if (event.end instanceof Date) {
+        timeDisplay += ` - ${format(event.end, 'HH:mm')}`;
+      }
+    }
 
     return (
       <div
         key={event.id}
-        className={`absolute left-1 right-1 rounded px-2 py-1 text-xs cursor-pointer hover:shadow-md transition-all duration-200 z-10 border-l-4 ${colorClass}`}
+        className={`absolute left-1 right-1 rounded-sm px-2 py-1 text-xs cursor-pointer hover:shadow-lg transition-all duration-200 z-10 ${colorClass}`}
         style={{ 
           height: `${height}px`, 
           minHeight: '20px',
           top: `${topOffset}px`
         }}
-        title={event.summary || event.title}
+        title={`${title}${location ? ` - ${location}` : ''}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          console.log('🖱️ Event clicked:', event);
+        }}
       >
-        <div className="font-medium truncate">{event.summary || event.title}</div>
-        {event.start?.dateTime && (
+        <div className="font-medium truncate">{title}</div>
+        {timeDisplay && (
           <div className="opacity-90 truncate text-xs">
-            {format(new Date(event.start.dateTime), 'HH:mm')}
-            {event.end?.dateTime && ` - ${format(new Date(event.end.dateTime), 'HH:mm')}`}
+            {timeDisplay}
           </div>
         )}
-        {event.location && (
-          <div className="opacity-75 truncate text-xs">{event.location}</div>
+        {location && (
+          <div className="opacity-75 truncate text-xs">{location}</div>
         )}
       </div>
     );
@@ -141,6 +205,14 @@ const WeekView: React.FC = () => {
     const now = new Date();
     return weekDays.some(day => isSameDay(day, now));
   };
+
+  const getCurrentTimeDay = () => {
+    const now = new Date();
+    return weekDays.findIndex(day => isSameDay(day, now));
+  };
+
+  console.log('🔄 WeekView render - Events in store:', events.length);
+  console.log('📅 Sample event:', events[0]);
 
   return (
     <div className="flex-1 bg-white dark:bg-gray-800 overflow-hidden">
@@ -185,7 +257,7 @@ const WeekView: React.FC = () => {
               </div>
               
               {/* Day columns */}
-              {weekDays.map(day => {
+              {weekDays.map((day, dayIndex) => {
                 const hourData = getEventsForDayAndHour(day, hour);
                 return (
                   <div
@@ -202,14 +274,18 @@ const WeekView: React.FC = () => {
             </div>
           ))}
           
-          {/* Current time indicator */}
+          {/* Current time indicator - Red line like Google */}
           {isCurrentTimeVisible() && (
             <div 
-              className="absolute left-0 right-0 z-20 pointer-events-none"
-              style={{ top: `${getCurrentTimePosition()}px` }}
+              className="absolute z-20 pointer-events-none"
+              style={{ 
+                top: `${getCurrentTimePosition()}px`,
+                left: '60px',
+                right: '0px'
+              }}
             >
               <div className="flex items-center">
-                <div className="w-3 h-3 bg-red-500 rounded-full ml-14 -mt-1.5"></div>
+                <div className="w-3 h-3 bg-red-500 rounded-full -ml-1.5 -mt-1.5 border-2 border-white dark:border-gray-800"></div>
                 <div className="flex-1 h-0.5 bg-red-500"></div>
               </div>
             </div>

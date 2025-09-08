@@ -79,7 +79,55 @@ export const useCalendarStore = create<CalendarState & CalendarActions>()(
       currentDate: new Date(),
       selectedDate: null,
       activeSchedulingType: 'meetings',
-      events: [],
+      events: [
+        // Add some sample events for testing
+        {
+          id: 'sample-1',
+          summary: 'Team Meeting',
+          description: 'Weekly team sync',
+          start: {
+            dateTime: new Date(new Date().setHours(10, 0, 0, 0)).toISOString(),
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          },
+          end: {
+            dateTime: new Date(new Date().setHours(11, 0, 0, 0)).toISOString(),
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          },
+          location: 'Conference Room A',
+          attendees: [
+            { email: 'john@company.com', displayName: 'John Doe' }
+          ]
+        },
+        {
+          id: 'sample-2',
+          summary: 'Client Call',
+          description: 'Quarterly review with client',
+          start: {
+            dateTime: new Date(new Date().setHours(14, 30, 0, 0)).toISOString(),
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          },
+          end: {
+            dateTime: new Date(new Date().setHours(15, 30, 0, 0)).toISOString(),
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          },
+          location: 'Zoom',
+          attendees: [
+            { email: 'client@company.com', displayName: 'Client Name' }
+          ]
+        },
+        {
+          id: 'sample-3',
+          summary: 'Lunch Break',
+          start: {
+            dateTime: new Date(new Date().setHours(12, 0, 0, 0)).toISOString(),
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          },
+          end: {
+            dateTime: new Date(new Date().setHours(13, 0, 0, 0)).toISOString(),
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          }
+        }
+      ],
       tasks: [],
       taskLists: [],
       outOfOfficeEvents: [],
