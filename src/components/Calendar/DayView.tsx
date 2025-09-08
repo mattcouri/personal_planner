@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { useCalendarStore } from '../../stores/calendarStore';
-import { googleCalendarApi } from '../../services/googleCalendarApi';
 import EventModal from './EventModal';
+import EventDetailModal from './EventDetailModal';
+import { CheckSquare } from 'lucide-react';
 
 const DayView: React.FC = () => {
   const {
@@ -14,6 +15,9 @@ const DayView: React.FC = () => {
 
   const [showEventModal, setShowEventModal] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ date: Date; hour: number; minute: number } | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [selectedEventType, setSelectedEventType] = useState<'event' | 'task'>('event');
 
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
@@ -43,6 +47,15 @@ const DayView: React.FC = () => {
     return { events: hourEvents, outOfOffice: hourOutOfOffice };
   };
 
+  const getAllDayEventsForDay = () => {
+    return events.filter(event => {
+      if (event.start?.date && !event.start?.dateTime) {
+        return isSameDay(new Date(event.start.date), currentDate);
+      }
+      return false;
+    });
+  };
+
   const getDayTasks = () => {
     return tasks.filter(task => {
       if (task.due) {
@@ -52,6 +65,17 @@ const DayView: React.FC = () => {
     });
   };
 
+  const handleEventClick = (event: any, type: 'event' | 'task') => {
+    setSelectedEvent(event);
+    setSelectedEventType(type);
+    setShowDetailModal(true);
+  };
+
+  const getUserRSVPStatus = (event: any) => {
+    const userAttendee = event.attendees?.find((a: any) => a.self);
+    return userAttendee?.responseStatus || 'needsAction';
+  };
+
   const renderEvent = (event: any, type: 'event' | 'outOfOffice') => {
     const duration = event.end?.dateTime && event.start?.dateTime
       ? (new Date(event.end.dateTime).getTime() - new Date(event.start.dateTime).getTime()) / (1000 * 60)
@@ -59,15 +83,32 @@ const DayView: React.FC = () => {
     
     const height = Math.max((duration / 60) * 80, 40); // Minimum 40px height
 
-    const colorClass = type === 'outOfOffice'
-      ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-700/50'
-      : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700/50';
+    // Check RSVP status for visual styling
+    const rsvpStatus = getUserRSVPStatus(event);
+    const isConfirmed = rsvpStatus === 'accepted';
+    
+    let colorClass = '';
+    if (type === 'outOfOffice') {
+      colorClass = 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-700/50';
+    } else {
+      // Event styling based on RSVP status
+      if (isConfirmed) {
+        colorClass = 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700/50';
+      } else {
+        // Hollow/outline style for unconfirmed events
+        colorClass = 'bg-white dark:bg-gray-800 text-green-600 dark:text-green-400 border-2 border-green-500 border-dashed';
+      }
+    }
 
     return (
       <div
         key={event.id}
         className={`p-3 rounded-lg border cursor-pointer hover:shadow-md transition-all duration-200 mb-2 ${colorClass}`}
         style={{ minHeight: `${height}px` }}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleEventClick(event, 'event');
+        }}
       >
         <div className="font-medium text-sm mb-1">{event.summary || event.title}</div>
         {event.start?.dateTime && (
@@ -91,6 +132,7 @@ const DayView: React.FC = () => {
     setShowEventModal(true);
   };
 
+  const allDayEvents = getAllDayEventsForDay();
   const dayTasks = getDayTasks();
 
   return (
@@ -102,7 +144,25 @@ const DayView: React.FC = () => {
         </h3>
       </div>
 
-      {/* All-day tasks section */}
+      {/* All-day events section */}
+      {allDayEvents.length > 0 && (
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-900/10">
+          <h4 className="text-sm font-medium text-green-700 dark:text-green-300 mb-2">All day</h4>
+          <div className="space-y-2">
+            {allDayEvents.map(event => (
+              <div
+                key={event.id}
+                className="p-2 rounded bg-green-500 text-white cursor-pointer hover:bg-green-600 transition-colors duration-200"
+                onClick={() => handleEventClick(event, 'event')}
+              >
+                {event.summary}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tasks section */}
       {dayTasks.length > 0 && (
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-900/10">
           <h4 className="text-sm font-medium text-green-700 dark:text-green-300 mb-2">Tasks</h4>
@@ -110,14 +170,10 @@ const DayView: React.FC = () => {
             {dayTasks.map(task => (
               <div
                 key={task.id}
-                className="flex items-center space-x-2 p-2 rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700/50"
+                className="flex items-center space-x-2 p-2 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700/50 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors duration-200"
+                onClick={() => handleEventClick(task, 'task')}
               >
-                <input
-                  type="checkbox"
-                  checked={task.status === 'completed'}
-                  className="rounded border-green-300 text-green-500 focus:ring-green-500"
-                  readOnly
-                />
+                <CheckSquare className="w-4 h-4" />
                 <span className={task.status === 'completed' ? 'line-through' : ''}>{task.title}</span>
                 {task.status === 'completed' && <span className="text-green-500">✓</span>}
               </div>
@@ -135,6 +191,21 @@ const DayView: React.FC = () => {
         }}
         selectedDate={selectedSlot?.date}
         selectedTime={selectedSlot ? { hour: selectedSlot.hour, minute: selectedSlot.minute } : undefined}
+      />
+      
+      {/* Event Detail Modal */}
+      <EventDetailModal
+        isOpen={showDetailModal}
+        onClose={() => {
+          setShowDetailModal(false);
+          setSelectedEvent(null);
+        }}
+        event={selectedEvent}
+        eventType={selectedEventType}
+        onEdit={() => {
+          setShowDetailModal(false);
+          // TODO: Open edit modal
+        }}
       />
 
       {/* Hourly schedule */}

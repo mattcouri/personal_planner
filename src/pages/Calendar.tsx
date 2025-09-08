@@ -196,13 +196,9 @@ const Calendar: React.FC = () => {
 
       // Load tasks from all task lists
       console.log('✅ Fetching tasks...');
-      const allTasks = [];
-      for (const taskList of taskListsResponse.items || []) {
-        const tasksResponse = await googleCalendarApi.getTasks(taskList.id);
-        console.log(`✅ Tasks for ${taskList.title}:`, tasksResponse);
-        allTasks.push(...(tasksResponse.items || []));
-      }
-      setTasks(allTasks);
+      const allTasksResponse = await googleCalendarApi.getAllTasks();
+      console.log('✅ All tasks loaded:', allTasksResponse.items.length);
+      setTasks(allTasksResponse.items);
 
       // Load out-of-office events
       console.log('☕ Fetching out-of-office events...');

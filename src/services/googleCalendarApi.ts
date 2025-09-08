@@ -77,6 +77,24 @@ class GoogleCalendarApiService {
     return this.makeRequest(`${this.baseUrl}/calendars/${calendarId}/events?${params}`);
   }
 
+  // Get all tasks from all task lists
+  async getAllTasks(): Promise<{ items: Task[] }> {
+    try {
+      const taskListsResponse = await this.getTaskLists();
+      const allTasks: Task[] = [];
+      
+      for (const taskList of taskListsResponse.items || []) {
+        const tasksResponse = await this.getTasks(taskList.id);
+        allTasks.push(...(tasksResponse.items || []));
+      }
+      
+      return { items: allTasks };
+    } catch (error) {
+      console.error('Failed to get all tasks:', error);
+      return { items: [] };
+    }
+  };
+
   async createEvent(calendarId: string = 'primary', event: Partial<CalendarEvent>): Promise<CalendarEvent> {
     return this.makeRequest(`${this.baseUrl}/calendars/${calendarId}/events`, {
       method: 'POST',
