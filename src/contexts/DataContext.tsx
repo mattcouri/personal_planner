@@ -121,7 +121,14 @@ const getInitialState = (): AppState => {
   return {
     events: [],
     todos: savedData.todos || [],
-    dailyPlans: savedData.dailyPlans || {},
+    dailyPlans: Object.keys(savedData.dailyPlans || {}).reduce((acc, date) => {
+      acc[date] = (savedData.dailyPlans[date] || []).map(item => ({
+        ...item,
+        start: new Date(item.start),
+        end: new Date(item.end)
+      }));
+      return acc;
+    }, {} as Record<string, PlanItem[]>),
     projects: savedData.projects || [],
     goals: savedData.goals || [],
     passwords: savedData.passwords || [],
