@@ -174,6 +174,8 @@ export default function Passwords() {
                         )}
                       </button>
                       <button
+                        onClick={() => copyToClipboard(password.password)}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200 flex-shrink-0"
                         title="Copy password"
                       >
                         <Copy className="w-3 h-3" />
@@ -294,15 +296,6 @@ function AddPasswordModal({
     url: password?.url || '',
   });
 
-  const generatePassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-    let result = '';
-    for (let i = 0; i < 16; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setFormData({ ...formData, password: result });
-  };
-
   const calculatePasswordStrength = (password: string): string => {
     if (password.length < 6) return 'weak';
     if (password.length < 10) return 'medium';
@@ -312,9 +305,17 @@ function AddPasswordModal({
     return 'medium';
   };
 
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let result = '';
+    for (let i = 0; i < 16; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setFormData({ ...formData, password: result });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
     const passwordData = {
       id: password?.id || uuidv4(),
       ...formData,
