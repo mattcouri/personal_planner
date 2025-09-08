@@ -75,11 +75,15 @@ const AgendaView: React.FC = () => {
     };
 
     const getColorClass = () => {
+      const isCompleted = type === 'task' && 'status' in item && item.status === 'completed';
+      
       switch (type) {
         case 'event':
           return 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700/50 text-blue-700 dark:text-blue-300';
         case 'task':
-          return 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700/50 text-green-700 dark:text-green-300';
+          return isCompleted 
+            ? 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400'
+            : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700/50 text-blue-700 dark:text-blue-300';
         case 'outOfOffice':
           return 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-700/50 text-orange-700 dark:text-orange-300';
         default:
@@ -106,6 +110,8 @@ const AgendaView: React.FC = () => {
       return null;
     };
 
+    const isCompleted = type === 'task' && 'status' in item && item.status === 'completed';
+
     return (
       <div
         key={item.id}
@@ -117,7 +123,7 @@ const AgendaView: React.FC = () => {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-1">
-              <h4 className="font-medium text-sm truncate">{getTitle()}</h4>
+              <h4 className={`font-medium text-sm truncate ${isCompleted ? 'line-through' : ''}`}>{getTitle()}</h4>
               {getTime() && (
                 <span className="text-xs font-mono bg-white dark:bg-gray-800 px-2 py-1 rounded">
                   {getTime()}
@@ -144,7 +150,7 @@ const AgendaView: React.FC = () => {
                 </div>
               )}
               
-              {type === 'task' && 'status' in item && item.status === 'completed' && (
+              {isCompleted && (
                 <span className="text-green-500 font-medium">✓ Completed</span>
               )}
             </div>

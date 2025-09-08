@@ -118,9 +118,21 @@ const WeekView: React.FC = () => {
   const getTasksForDay = (day: Date) => {
     return tasks.filter(task => {
       if (task.due) {
+        // Parse task due date properly - Google Tasks API returns RFC 3339 format
         const taskDueDate = new Date(task.due);
-        console.log(`📋 Task "${task.title}" due: ${task.due} -> parsed: ${taskDueDate} -> same day as ${format(day, 'yyyy-MM-dd')}? ${isSameDay(taskDueDate, day)}`);
         return isSameDay(taskDueDate, day);
+      }
+      return false;
+    });
+  };
+
+  const getTasksForDayAndHour = (day: Date, hour: number) => {
+    return tasks.filter(task => {
+      if (task.due) {
+        const taskDueDate = new Date(task.due);
+        const isSameDay = taskDueDate.toDateString() === day.toDateString();
+        const isSameHour = taskDueDate.getHours() === hour;
+        return isSameDay && isSameHour;
       }
       return false;
     });
@@ -172,15 +184,15 @@ const WeekView: React.FC = () => {
     const height = Math.max((duration / 60) * 48, 20);
     const topOffset = (startMinute / 60) * 48;
 
-    // Check RSVP status for visual styling
-    const rsvpStatus = getUserRSVPStatus(event);
-    const isConfirmed = rsvpStatus === 'accepted';
-    
     // Google Calendar colors with RSVP styling
     let colorClass = '';
     if (type === 'outOfOffice') {
       colorClass = 'bg-orange-500 text-white border-l-4 border-orange-600';
     } else {
+      // Check RSVP status for visual styling (only for events, not tasks)
+      const rsvpStatus = getUserRSVPStatus(event);
+      const isConfirmed = rsvpStatus === 'accepted';
+      
       // Event styling based on RSVP status
       if (isConfirmed) {
         colorClass = 'bg-green-500 text-white border-l-4 border-green-600';
@@ -237,32 +249,48 @@ const WeekView: React.FC = () => {
   };
 
   const renderTask = (task: any, day: Date) => {
-    const timeStr = task.due ? format(new Date(task.due), 'HH:mm') : '';
+    const taskDueDate = new Date(task.due);
+    const timeStr = format(taskDueDate, 'HH:mm');
+    const isCompleted = task.status === 'completed';
     
     return (
       <div
         key={task.id}
-        className="bg-blue-500 text-white border-l-4 border-blue-600 rounded-sm px-2 py-1 text-xs cursor-pointer hover:shadow-lg transition-all duration-200 mb-1"
+        className={`absolute left-1 right-1 rounded-sm px-2 py-1 text-xs cursor-pointer hover:shadow-lg transition-all duration-200 z-10 border-l-4 ${
+          isCompleted 
+            ? 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 border-gray-400 dark:border-gray-500'
+            : 'bg-blue-500 text-white border-blue-600'
+        }`}
+        style={{ 
+          height: '20px',
+          top: `${(taskDueDate.getMinutes() / 60) * 48}px`
+        }}
         onClick={(e) => {
           e.stopPropagation();
           handleEventClick(task, 'task');
         }}
         title={task.title}
       >
-        <div className="flex items-center space-x-1">
+        <div className={`flex items-center space-x-1 ${isCompleted ? 'line-through' : ''}`}>
           <CheckSquare className="w-3 h-3" />
           <span className="font-medium truncate">{task.title}</span>
-          {timeStr && <span className="text-xs opacity-90">{timeStr}</span>}
+          <span className="text-xs opacity-90">{timeStr}</span>
         </div>
       </div>
     );
   };
 
   const renderAllDayEvent = (event: any) => {
+    const isCompleted = event.status === 'completed';
+    
     return (
       <div
         key={event.id}
-        className="bg-green-500 text-white rounded px-2 py-1 text-xs cursor-pointer hover:shadow-md transition-all duration-200 truncate"
+        className={`rounded px-2 py-1 text-xs cursor-pointer hover:shadow-md transition-all duration-200 truncate ${
+          isCompleted 
+            ? 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 line-through'
+            : 'bg-green-500 text-white'
+        }`}
         onClick={(e) => {
           e.stopPropagation();
           handleEventClick(event, 'event');
@@ -324,11 +352,6 @@ const WeekView: React.FC = () => {
             <div className="mt-2 space-y-1 px-1">
               {getAllDayEventsForDay(day).map(event => renderAllDayEvent(event))}
             </div>
-            
-            {/* Tasks for the day */}
-            <div className="mt-1 space-y-1 px-1">
-              {getTasksForDay(day).slice(0, 2).map(task => renderTask(task, day))}
-            </div>
           </div>
         ))}
       </div>
@@ -347,6 +370,7 @@ const WeekView: React.FC = () => {
               {/* Day columns */}
               {weekDays.map((day, dayIndex) => {
                 const hourData = getEventsForDayAndHour(day, hour);
+                const hourTasks = getTasksForDayAndHour(day, hour);
                 return (
                   <div
                     key={`${day.toString()}-${hour}`}
@@ -356,6 +380,8 @@ const WeekView: React.FC = () => {
                     {/* Events */}
                     {hourData.events.map(event => renderEvent(event, 'event'))}
                     {hourData.outOfOffice.map(event => renderEvent(event, 'outOfOffice'))}
+                    {/* Tasks at specific times */}
+                    {hourTasks.map(task => renderTask(task, day))}
                   </div>
                 );
               })}

@@ -138,50 +138,78 @@ const EventModal: React.FC<EventModalProps> = ({
     setIsSubmitting(true);
 
     try {
-      // Build event object
-      const startDateTime = formData.allDay ? 
-        undefined : 
-        new Date(`${formData.startDate}T${formData.startTime}`).toISOString();
-      
-      const endDateTime = formData.allDay ? 
-        undefined : 
-        new Date(`${formData.endDate}T${formData.endTime}`).toISOString();
+      if (activeTab === 'task') {
+        // Create Google Task
+        const taskData = {
+          title: formData.title,
+          notes: formData.description,
+          due: formData.allDay ? 
+            `${formData.startDate}T00:00:00.000Z` :
+            new Date(`${formData.startDate}T${formData.startTime}`).toISOString(),
+          status: 'needsAction'
+        };
 
-      const eventData = {
-        summary: formData.title,
-        description: formData.description,
-        start: formData.allDay ? 
-          { date: formData.startDate, timeZone: formData.timeZone } :
-          { dateTime: startDateTime, timeZone: formData.timeZone },
-        end: formData.allDay ? 
-          { date: formData.endDate, timeZone: formData.timeZone } :
-          { dateTime: endDateTime, timeZone: formData.timeZone },
-        location: formData.location,
-        attendees: formData.guests ? 
-          formData.guests.split(',').map(email => ({ email: email.trim() })) : 
-          undefined,
-        conferenceData: formData.addGoogleMeet ? {
-          createRequest: {
-            requestId: `meet-${Date.now()}`,
-            conferenceSolutionKey: { type: 'hangoutsMeet' }
+        if (editingEvent) {
+          // Update existing task
+          const taskLists = await googleCalendarApi.getTaskLists();
+          const defaultTaskList = taskLists.items?.[0];
+          if (defaultTaskList) {
+            await googleCalendarApi.updateTask(defaultTaskList.id, editingEvent.id, taskData);
           }
-        } : undefined,
-        recurrence: buildRecurrenceRule(),
-        reminders: {
-          useDefault: false,
-          overrides: formData.reminders
-        },
-        visibility: formData.visibility,
-        transparency: formData.showAs === 'free' ? 'transparent' : 'opaque'
-      };
-
-      if (editingEvent) {
-        await googleCalendarApi.updateEvent('primary', editingEvent.id, eventData);
-      } else {
-        if (formData.addGoogleMeet) {
-          await googleCalendarApi.createMeetingWithConference('primary', eventData);
         } else {
-          await googleCalendarApi.createEvent('primary', eventData);
+          // Create new task
+          const taskLists = await googleCalendarApi.getTaskLists();
+          const defaultTaskList = taskLists.items?.[0];
+          if (defaultTaskList) {
+            await googleCalendarApi.createTask(defaultTaskList.id, taskData);
+          }
+        }
+      } else {
+        // Create Calendar Event
+        const startDateTime = formData.allDay ? 
+          undefined : 
+          new Date(`${formData.startDate}T${formData.startTime}`).toISOString();
+        
+        const endDateTime = formData.allDay ? 
+          undefined : 
+          new Date(`${formData.endDate}T${formData.endTime}`).toISOString();
+
+        const eventData = {
+          summary: formData.title,
+          description: formData.description,
+          start: formData.allDay ? 
+            { date: formData.startDate, timeZone: formData.timeZone } :
+            { dateTime: startDateTime, timeZone: formData.timeZone },
+          end: formData.allDay ? 
+            { date: formData.endDate, timeZone: formData.timeZone } :
+            { dateTime: endDateTime, timeZone: formData.timeZone },
+          location: formData.location,
+          attendees: formData.guests ? 
+            formData.guests.split(',').map(email => ({ email: email.trim() })) : 
+            undefined,
+          conferenceData: formData.addGoogleMeet ? {
+            createRequest: {
+              requestId: `meet-${Date.now()}`,
+              conferenceSolutionKey: { type: 'hangoutsMeet' }
+            }
+          } : undefined,
+          recurrence: buildRecurrenceRule(),
+          reminders: {
+            useDefault: false,
+            overrides: formData.reminders
+          },
+          visibility: formData.visibility,
+          transparency: formData.showAs === 'free' ? 'transparent' : 'opaque'
+        };
+
+        if (editingEvent) {
+          await googleCalendarApi.updateEvent('primary', editingEvent.id, eventData);
+        } else {
+          if (formData.addGoogleMeet) {
+            await googleCalendarApi.createMeetingWithConference('primary', eventData);
+          } else {
+            await googleCalendarApi.createEvent('primary', eventData);
+          }
         }
       }
 

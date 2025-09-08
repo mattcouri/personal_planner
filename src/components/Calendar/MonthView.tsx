@@ -108,7 +108,10 @@ const MonthView: React.FC = () => {
         case 'meeting':
           return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700/50';
         case 'task':
-          return 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700/50';
+          const isCompleted = 'status' in item && item.status === 'completed';
+          return isCompleted 
+            ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600'
+            : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700/50';
         case 'outOfOffice':
           return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-700/50';
         default:
@@ -131,6 +134,8 @@ const MonthView: React.FC = () => {
       return '';
     };
 
+    const isCompleted = type === 'task' && 'status' in item && item.status === 'completed';
+
     return (
       <div
         key={item.id}
@@ -141,10 +146,11 @@ const MonthView: React.FC = () => {
           handleEventClick(item, type === 'task' ? 'task' : 'event');
         }}
       >
-        <div className="flex items-center space-x-1">
+        <div className={`flex items-center space-x-1 ${isCompleted ? 'line-through' : ''}`}>
+          {type === 'task' && <CheckSquare className="w-3 h-3" />}
           {getTime() && <span className="font-mono text-xs">{getTime()}</span>}
           <span className="truncate">{getTitle()}</span>
-          {type === 'task' && 'status' in item && item.status === 'completed' && (
+          {isCompleted && (
             <span className="text-green-500">✓</span>
           )}
         </div>
@@ -214,11 +220,30 @@ const MonthView: React.FC = () => {
                   .map(event => renderEventItem(event, 'meeting'))
                 }
                 
-                {/* Tasks */}
-                {dayData.tasks.slice(0, 2).map(task => renderEventItem(task, 'task'))}
+                {/* Tasks with specific times */}
+                {dayData.tasks
+                  .filter(task => {
+                    if (!task.due) return false;
+                    const taskDate = new Date(task.due);
+                    return taskDate.getHours() !== 0 || taskDate.getMinutes() !== 0;
+                  })
+                  .slice(0, 2)
+                  .map(task => renderEventItem(task, 'task'))
+                }
                 
                 {/* Out of office */}
                 {dayData.outOfOffice.slice(0, 1).map(event => renderEventItem(event, 'outOfOffice'))}
+                
+                {/* All-day tasks */}
+                {dayData.tasks
+                  .filter(task => {
+                    if (!task.due) return true;
+                    const taskDate = new Date(task.due);
+                    return taskDate.getHours() === 0 && taskDate.getMinutes() === 0;
+                  })
+                  .slice(0, 1)
+                  .map(task => renderEventItem(task, 'task'))
+                }
 
                 {/* Show overflow indicator */}
                 {(dayData.events.length + dayData.tasks.length + dayData.outOfOffice.length) > 4 && (

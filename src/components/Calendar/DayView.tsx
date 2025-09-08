@@ -43,7 +43,9 @@ const DayView: React.FC = () => {
       return false;
     });
 
-    return { events: hourEvents, outOfOffice: hourOutOfOffice };
+    const hourTasks = getTasksForHour(hour);
+
+    return { events: hourEvents, outOfOffice: hourOutOfOffice, tasks: hourTasks };
   };
 
   const getAllDayEventsForDay = () => {
@@ -59,7 +61,17 @@ const DayView: React.FC = () => {
     return tasks.filter(task => {
       if (task.due) {
         const taskDueDate = new Date(task.due);
-        return isSameDay(taskDueDate, day);
+        return isSameDay(taskDueDate, currentDate);
+      }
+      return false;
+    });
+  };
+
+  const getTasksForHour = (hour: number) => {
+    return tasks.filter(task => {
+      if (task.due) {
+        const taskDueDate = new Date(task.due);
+        return isSameDay(taskDueDate, currentDate) && taskDueDate.getHours() === hour;
       }
       return false;
     });
@@ -165,21 +177,38 @@ const DayView: React.FC = () => {
       )}
 
       {/* Tasks section */}
-      {dayTasks.length > 0 && (
+      {dayTasks.filter(task => {
+        if (!task.due) return true;
+        const taskDate = new Date(task.due);
+        return taskDate.getHours() === 0 && taskDate.getMinutes() === 0;
+      }).length > 0 && (
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-900/10">
-          <h4 className="text-sm font-medium text-green-700 dark:text-green-300 mb-2">Tasks</h4>
+          <h4 className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-2">All-day Tasks</h4>
           <div className="space-y-2">
-            {dayTasks.map(task => (
+            {dayTasks
+              .filter(task => {
+                if (!task.due) return true;
+                const taskDate = new Date(task.due);
+                return taskDate.getHours() === 0 && taskDate.getMinutes() === 0;
+              })
+              .map(task => {
+                const isCompleted = task.status === 'completed';
+                return (
               <div
                 key={task.id}
-                className="flex items-center space-x-2 p-2 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700/50 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors duration-200"
+                className={`flex items-center space-x-2 p-2 rounded border cursor-pointer transition-colors duration-200 ${
+                  isCompleted 
+                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600'
+                    : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700/50 hover:bg-blue-200 dark:hover:bg-blue-900/50'
+                }`}
                 onClick={() => handleEventClick(task, 'task')}
               >
                 <CheckSquare className="w-4 h-4" />
-                <span className={task.status === 'completed' ? 'line-through' : ''}>{task.title}</span>
-                {task.status === 'completed' && <span className="text-green-500">✓</span>}
+                <span className={isCompleted ? 'line-through' : ''}>{task.title}</span>
+                {isCompleted && <span className="text-green-500">✓</span>}
               </div>
-            ))}
+            );
+          })}
           </div>
         </div>
       )}
@@ -242,8 +271,41 @@ const DayView: React.FC = () => {
               </div>
             </div>
           );
+          {hourData.tasks.map(task => renderTaskInHour(task))}
         })}
       </div>
+    </div>
+  );
+};
+
+const renderTaskInHour = (task: any) => {
+  const isCompleted = task.status === 'completed';
+  const taskDueDate = new Date(task.due);
+  const timeStr = format(taskDueDate, 'HH:mm');
+  
+  return (
+    <div
+      key={task.id}
+      className={`p-3 rounded-lg border cursor-pointer hover:shadow-md transition-all duration-200 mb-2 border-l-4 ${
+        isCompleted 
+          ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border-gray-400 dark:border-gray-500'
+          : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-500'
+      }`}
+      onClick={(e) => {
+        e.stopPropagation();
+        // handleEventClick(task, 'task'); // You'll need to pass this function down
+      }}
+    >
+      <div className={`flex items-center space-x-2 ${isCompleted ? 'line-through' : ''}`}>
+        <CheckSquare className="w-4 h-4" />
+        <div className="font-medium text-sm mb-1">{task.title}</div>
+      </div>
+      <div className="text-xs opacity-75 mb-1">
+        {timeStr}
+      </div>
+      {task.notes && (
+        <div className="text-xs opacity-75 line-clamp-2">{task.notes}</div>
+      )}
     </div>
   );
 };
