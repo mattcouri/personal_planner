@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { useCalendarStore } from '../../stores/calendarStore';
-import { CheckSquare } from 'lucide-react';
 import EventModal from './EventModal';
 import EventDetailModal from './EventDetailModal';
-import { CheckSquare } from 'lucide-react';
 
 const DayView: React.FC = () => {
   const {
