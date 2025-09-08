@@ -22,10 +22,14 @@ const AgendaView: React.FC = () => {
   const getItemsForDay = (day: Date) => {
     const dayEvents = events.filter(event => {
       if (event.start?.date) {
-        return isSameDay(new Date(event.start.date), day);
+        // All-day events - parse date correctly
+        const eventDate = new Date(event.start.date + 'T00:00:00');
+        return isSameDay(eventDate, day);
       }
       if (event.start?.dateTime) {
-        return isSameDay(new Date(event.start.dateTime), day);
+        // Timed events - parse dateTime correctly
+        const eventDate = new Date(event.start.dateTime);
+        return isSameDay(eventDate, day);
       }
       if (event.start instanceof Date) {
         return isSameDay(event.start, day);
@@ -35,17 +39,21 @@ const AgendaView: React.FC = () => {
 
     const dayTasks = tasks.filter(task => {
       if (task.due) {
-        return isSameDay(new Date(task.due), day);
+        // Parse task due date correctly
+        const taskDueDate = new Date(task.due);
+        return isSameDay(taskDueDate, day);
       }
       return false;
     });
 
     const dayOutOfOffice = outOfOfficeEvents.filter(event => {
       if (event.start?.date) {
-        return isSameDay(new Date(event.start.date), day);
+        const eventDate = new Date(event.start.date + 'T00:00:00');
+        return isSameDay(eventDate, day);
       }
       if (event.start?.dateTime) {
-        return isSameDay(new Date(event.start.dateTime), day);
+        const eventDate = new Date(event.start.dateTime);
+        return isSameDay(eventDate, day);
       }
       if (event.start instanceof Date) {
         return isSameDay(event.start, day);

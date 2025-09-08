@@ -61,23 +61,27 @@ const WeekView: React.FC = () => {
   };
 
   const getEventsForDayAndHour = (day: Date, hour: number) => {
-    // console.log(`🔍 Getting events for ${format(day, 'yyyy-MM-dd')} hour ${hour}`);
-    // console.log('📅 Total events in store:', events.length);
+    console.log(`🔍 Getting events for ${format(day, 'yyyy-MM-dd')} hour ${hour}`);
+    console.log('📅 Total events in store:', events.length);
     
     const dayEvents = events.filter(event => {
       // Handle both dateTime and date formats
       let eventDate: Date | null = null;
       
       if (event.start?.dateTime) {
+        // Parse the dateTime string properly
         eventDate = new Date(event.start.dateTime);
+        console.log(`📅 Event "${event.summary}" dateTime: ${event.start.dateTime} -> parsed: ${eventDate}`);
       } else if (event.start?.date) {
-        eventDate = new Date(event.start.date);
+        // For all-day events, don't include in hourly slots
+        console.log(`📅 Event "${event.summary}" is all-day (date: ${event.start.date}) - skipping hourly filter`);
+        return false;
       } else if (event.start instanceof Date) {
         eventDate = event.start;
       }
       
       if (!eventDate) {
-        // console.log('❌ Event has no valid start date:', event);
+        console.log('❌ Event has no valid start date:', event);
         return false;
       }
       
@@ -85,7 +89,7 @@ const WeekView: React.FC = () => {
       const isSameHour = eventDate.getHours() === hour;
       
       if (isSameDay && isSameHour) {
-        // console.log('✅ Found event for this slot:', event.summary || event.title);
+        console.log('✅ Found event for this slot:', event.summary || event.title);
       }
       
       return isSameDay && isSameHour;
@@ -114,7 +118,9 @@ const WeekView: React.FC = () => {
   const getTasksForDay = (day: Date) => {
     return tasks.filter(task => {
       if (task.due) {
-        return isSameDay(new Date(task.due), day);
+        const taskDueDate = new Date(task.due);
+        console.log(`📋 Task "${task.title}" due: ${task.due} -> parsed: ${taskDueDate} -> same day as ${format(day, 'yyyy-MM-dd')}? ${isSameDay(taskDueDate, day)}`);
+        return isSameDay(taskDueDate, day);
       }
       return false;
     });
@@ -122,8 +128,11 @@ const WeekView: React.FC = () => {
 
   const getAllDayEventsForDay = (day: Date) => {
     return events.filter(event => {
+      // Only include events that have a date (not dateTime) - these are all-day events
       if (event.start?.date && !event.start?.dateTime) {
-        return isSameDay(new Date(event.start.date), day);
+        const eventDate = new Date(event.start.date);
+        console.log(`📅 All-day event "${event.summary}" date: ${event.start.date} -> parsed: ${eventDate} -> same day as ${format(day, 'yyyy-MM-dd')}? ${isSameDay(eventDate, day)}`);
+        return isSameDay(eventDate, day);
       }
       return false;
     });

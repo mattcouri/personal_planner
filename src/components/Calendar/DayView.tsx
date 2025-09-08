@@ -58,7 +58,8 @@ const DayView: React.FC = () => {
   const getDayTasks = () => {
     return tasks.filter(task => {
       if (task.due) {
-        return isSameDay(new Date(task.due), currentDate);
+        const taskDueDate = new Date(task.due);
+        return isSameDay(taskDueDate, day);
       }
       return false;
     });
@@ -66,6 +67,7 @@ const DayView: React.FC = () => {
 
   const handleEventClick = (event: any, type: 'event' | 'task') => {
     setSelectedEvent(event);
+      // Only include events that have a date (not dateTime) - these are all-day events
     setSelectedEventType(type);
     setShowDetailModal(true);
   };
@@ -95,7 +97,8 @@ const DayView: React.FC = () => {
         colorClass = 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700/50';
       } else {
         // Hollow/outline style for unconfirmed events
-        colorClass = 'bg-white dark:bg-gray-800 text-green-600 dark:text-green-400 border-2 border-green-500 border-dashed';
+        const eventDate = new Date(event.start.date + 'T00:00:00');
+        return isSameDay(eventDate, day);
       }
     }
 
