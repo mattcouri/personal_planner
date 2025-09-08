@@ -6,6 +6,7 @@ import React, {
   useEffect,
   ReactNode,
 } from 'react';
+import { localStorageService } from '../services/localStorageService';
 
 interface Event {
   id: string;
@@ -58,13 +59,22 @@ interface AppState {
   todos: Todo[];
   dailyPlans: Record<string, PlanItem[]>;
   projects: Project[];
+  goals: any[];
   passwords: any[];
   habits: any[];
   habitLegend: Record<string, { icon: string; label: string; color: string }>;
+  healthDimensions: any[];
   financialAccounts: any[];
   financialTransactions: any[];
   financialGoals: any[];
   healthScores: any[];
+  completedTasks: any[];
+  archivedItems: any[];
+  userPreferences: {
+    theme: string;
+    defaultView: string;
+    notifications: boolean;
+  };
 }
 
 type Action =
@@ -80,117 +90,62 @@ type Action =
   | { type: 'DELETE_PROJECT'; payload: string }
   | { type: 'SET_DAILY_PLAN'; payload: { date: string; items: PlanItem[] } }
   | { type: 'SET_HABIT'; payload: any }
-  | { type: 'SET_HEALTH_SCORE'; payload: any };
+  | { type: 'SET_HEALTH_SCORE'; payload: any }
+  | { type: 'ADD_GOAL'; payload: any }
+  | { type: 'UPDATE_GOAL'; payload: any }
+  | { type: 'DELETE_GOAL'; payload: string }
+  | { type: 'ADD_HEALTH_DIMENSION'; payload: any }
+  | { type: 'UPDATE_HEALTH_DIMENSION'; payload: any }
+  | { type: 'DELETE_HEALTH_DIMENSION'; payload: string }
+  | { type: 'ADD_PASSWORD'; payload: any }
+  | { type: 'UPDATE_PASSWORD'; payload: any }
+  | { type: 'DELETE_PASSWORD'; payload: string }
+  | { type: 'ADD_FINANCIAL_ACCOUNT'; payload: any }
+  | { type: 'UPDATE_FINANCIAL_ACCOUNT'; payload: any }
+  | { type: 'DELETE_FINANCIAL_ACCOUNT'; payload: string }
+  | { type: 'ADD_FINANCIAL_TRANSACTION'; payload: any }
+  | { type: 'UPDATE_FINANCIAL_TRANSACTION'; payload: any }
+  | { type: 'DELETE_FINANCIAL_TRANSACTION'; payload: string }
+  | { type: 'ADD_FINANCIAL_GOAL'; payload: any }
+  | { type: 'UPDATE_FINANCIAL_GOAL'; payload: any }
+  | { type: 'DELETE_FINANCIAL_GOAL'; payload: string }
+  | { type: 'COMPLETE_TODO'; payload: string }
+  | { type: 'ARCHIVE_ITEM'; payload: any }
+  | { type: 'UPDATE_USER_PREFERENCES'; payload: any }
+  | { type: 'LOAD_DATA'; payload: any };
 
-const initialState: AppState = {
-  events: [],
-  todos: [],
-  dailyPlans: {},
-  projects: [
-    { id: 'unclassified', name: 'Unclassified' },
-    { id: 'work', name: 'Work Projects' },
-    { id: 'personal', name: 'Personal Tasks' },
-    { id: 'health', name: 'Health & Fitness' },
-    { id: 'finance', name: 'Financial Planning' },
-    { id: 'learning', name: 'Learning & Development' },
-    { id: 'home', name: 'Home & Family' },
-    { id: 'creative', name: 'Creative Projects' },
-    { id: 'travel', name: 'Travel & Adventures' }
-  ],
-  passwords: [
-    {
-      id: 'pwd001',
-      name: 'Netflix Account',
-      username: 'user.netflix@email.com',
-      password: 'Stream2024!',
-      url: 'https://netflix.com',
-      notes: 'Family streaming account'
-    },
-    {
-      id: 'pwd002',
-      name: 'GitHub Repository',
-      username: 'developer_pro',
-      password: 'Code#Secure456',
-      url: 'https://github.com',
-      notes: 'Development projects repository'
-    },
-    {
-      id: 'pwd003',
-      name: 'Cloud Storage',
-      username: 'cloud.user.2024',
-      password: 'Storage&Safe789',
-      url: 'https://drive.google.com',
-      notes: 'Personal file backup service'
+// Initialize with data from localStorage
+const getInitialState = (): AppState => {
+  const savedData = localStorageService.loadData();
+  
+  return {
+    events: [],
+    todos: savedData.todos || [],
+    dailyPlans: savedData.dailyPlans || {},
+    projects: savedData.projects || [],
+    goals: savedData.goals || [],
+    passwords: savedData.passwords || [],
+    habits: savedData.habits || [],
+    habitLegend: savedData.habitLegend || {},
+    healthDimensions: savedData.healthDimensions || [],
+    financialAccounts: savedData.financialAccounts || [],
+    financialTransactions: savedData.financialTransactions.map(t => ({
+      ...t,
+      date: new Date(t.date)
+    })) || [],
+    financialGoals: savedData.financialGoals.map(g => ({
+      ...g,
+      deadline: new Date(g.deadline)
+    })) || [],
+    healthScores: savedData.healthScores || [],
+    completedTasks: savedData.completedTasks || [],
+    archivedItems: savedData.archivedItems || [],
+    userPreferences: savedData.userPreferences || {
+      theme: 'light',
+      defaultView: 'week',
+      notifications: true
     }
-  ],
-  habits: [],
-  habitLegend: {
-    completed: { icon: '✓', label: 'Completed', color: '#10B981' },
-    partial: { icon: '◐', label: 'Partial', color: '#F59E0B' },
-    missed: { icon: '✗', label: 'Missed', color: '#EF4444' },
-    notScheduled: { icon: '−', label: 'Not Scheduled', color: '#6B7280' },
-  },
-  financialAccounts: [
-    { id: 'acc001', name: 'Primary Checking', type: 'checking', balance: 4850.32 },
-    { id: 'acc002', name: 'High Yield Savings', type: 'savings', balance: 18750.00 },
-    { id: 'acc003', name: 'Retirement 401k', type: 'investment', balance: 45200.85 }
-  ],
-  financialTransactions: [
-    {
-      id: 'txn001',
-      description: 'Freelance Web Design',
-      amount: 2800,
-      type: 'income',
-      category: 'Freelance',
-      date: new Date(2024, 11, 5),
-      accountId: 'acc001'
-    },
-    {
-      id: 'txn002',
-      description: 'Monthly Rent Payment',
-      amount: 1450.00,
-      type: 'expense',
-      category: 'Housing',
-      date: new Date(2024, 11, 1),
-      accountId: 'acc001'
-    },
-    {
-      id: 'txn003',
-      description: 'Investment Dividend',
-      amount: 340.75,
-      type: 'income',
-      category: 'Investment',
-      date: new Date(2024, 11, 12),
-      accountId: 'acc003'
-    }
-  ],
-  financialGoals: [
-    {
-      id: 'goal001',
-      name: 'Home Down Payment',
-      targetAmount: 50000,
-      currentAmount: 12500,
-      deadline: new Date(2026, 5, 30),
-      weeklyContribution: 400
-    },
-    {
-      id: 'goal002',
-      name: 'European Trip',
-      targetAmount: 8000,
-      currentAmount: 2400,
-      deadline: new Date(2025, 7, 15),
-      weeklyContribution: 125
-    },
-    {
-      id: 'goal003',
-      name: 'Professional Camera',
-      targetAmount: 3500,
-      currentAmount: 950,
-      deadline: new Date(2025, 3, 20),
-      weeklyContribution: 85
-    }
-  ],
-  healthScores: []
+  };
 };
 
 const DataContext = createContext<{
@@ -203,8 +158,12 @@ const DataContext = createContext<{
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
+    case 'LOAD_DATA':
+      return { ...state, ...action.payload };
+      
     case 'ADD_EVENT':
       return { ...state, events: [...state.events, action.payload] };
+      
     case 'UPDATE_EVENT':
       return {
         ...state,
@@ -212,8 +171,10 @@ function reducer(state: AppState, action: Action): AppState {
           event.id === action.payload.id ? action.payload : event
         ),
       };
+      
     case 'ADD_TODO':
       return { ...state, todos: [...state.todos, action.payload] };
+      
     case 'UPDATE_TODO':
       return {
         ...state,
@@ -221,11 +182,24 @@ function reducer(state: AppState, action: Action): AppState {
           todo.id === action.payload.id ? action.payload : todo
         ),
       };
+      
     case 'DELETE_TODO':
       return {
         ...state,
         todos: state.todos.filter(todo => todo.id !== action.payload),
       };
+      
+    case 'COMPLETE_TODO':
+      const completedTodo = state.todos.find(todo => todo.id === action.payload);
+      if (completedTodo) {
+        return {
+          ...state,
+          todos: state.todos.filter(todo => todo.id !== action.payload),
+          completedTasks: [...state.completedTasks, { ...completedTodo, completedAt: new Date().toISOString() }]
+        };
+      }
+      return state;
+      
     case 'REORDER_TODOS':
       return {
         ...state,
@@ -234,6 +208,7 @@ function reducer(state: AppState, action: Action): AppState {
           return updatedTodo || todo;
         }),
       };
+      
     case 'MOVE_TODO_TO_PROJECT':
       return {
         ...state,
@@ -248,8 +223,10 @@ function reducer(state: AppState, action: Action): AppState {
           return todo;
         }),
       };
+      
     case 'ADD_PROJECT':
       return { ...state, projects: [...state.projects, action.payload] };
+      
     case 'UPDATE_PROJECT':
       return {
         ...state,
@@ -257,6 +234,7 @@ function reducer(state: AppState, action: Action): AppState {
           project.id === action.payload.id ? action.payload : project
         ),
       };
+      
     case 'DELETE_PROJECT':
       return {
         ...state,
@@ -268,6 +246,7 @@ function reducer(state: AppState, action: Action): AppState {
             : todo
         ),
       };
+      
     case 'SET_DAILY_PLAN':
       return {
         ...state,
@@ -276,6 +255,109 @@ function reducer(state: AppState, action: Action): AppState {
           [action.payload.date]: action.payload.items,
         },
       };
+      
+    case 'ADD_GOAL':
+      return { ...state, goals: [...state.goals, action.payload] };
+      
+    case 'UPDATE_GOAL':
+      return {
+        ...state,
+        goals: state.goals.map(goal =>
+          goal.id === action.payload.id ? action.payload : goal
+        ),
+      };
+      
+    case 'DELETE_GOAL':
+      return {
+        ...state,
+        goals: state.goals.filter(goal => goal.id !== action.payload),
+      };
+      
+    case 'ADD_HEALTH_DIMENSION':
+      return { ...state, healthDimensions: [...state.healthDimensions, action.payload] };
+      
+    case 'UPDATE_HEALTH_DIMENSION':
+      return {
+        ...state,
+        healthDimensions: state.healthDimensions.map(dimension =>
+          dimension.id === action.payload.id ? action.payload : dimension
+        ),
+      };
+      
+    case 'DELETE_HEALTH_DIMENSION':
+      return {
+        ...state,
+        healthDimensions: state.healthDimensions.filter(dimension => dimension.id !== action.payload),
+      };
+      
+    case 'ADD_PASSWORD':
+      return { ...state, passwords: [...state.passwords, action.payload] };
+      
+    case 'UPDATE_PASSWORD':
+      return {
+        ...state,
+        passwords: state.passwords.map(password =>
+          password.id === action.payload.id ? action.payload : password
+        ),
+      };
+      
+    case 'DELETE_PASSWORD':
+      return {
+        ...state,
+        passwords: state.passwords.filter(password => password.id !== action.payload),
+      };
+      
+    case 'ADD_FINANCIAL_ACCOUNT':
+      return { ...state, financialAccounts: [...state.financialAccounts, action.payload] };
+      
+    case 'UPDATE_FINANCIAL_ACCOUNT':
+      return {
+        ...state,
+        financialAccounts: state.financialAccounts.map(account =>
+          account.id === action.payload.id ? action.payload : account
+        ),
+      };
+      
+    case 'DELETE_FINANCIAL_ACCOUNT':
+      return {
+        ...state,
+        financialAccounts: state.financialAccounts.filter(account => account.id !== action.payload),
+      };
+      
+    case 'ADD_FINANCIAL_TRANSACTION':
+      return { ...state, financialTransactions: [...state.financialTransactions, action.payload] };
+      
+    case 'UPDATE_FINANCIAL_TRANSACTION':
+      return {
+        ...state,
+        financialTransactions: state.financialTransactions.map(transaction =>
+          transaction.id === action.payload.id ? action.payload : transaction
+        ),
+      };
+      
+    case 'DELETE_FINANCIAL_TRANSACTION':
+      return {
+        ...state,
+        financialTransactions: state.financialTransactions.filter(transaction => transaction.id !== action.payload),
+      };
+      
+    case 'ADD_FINANCIAL_GOAL':
+      return { ...state, financialGoals: [...state.financialGoals, action.payload] };
+      
+    case 'UPDATE_FINANCIAL_GOAL':
+      return {
+        ...state,
+        financialGoals: state.financialGoals.map(goal =>
+          goal.id === action.payload.id ? action.payload : goal
+        ),
+      };
+      
+    case 'DELETE_FINANCIAL_GOAL':
+      return {
+        ...state,
+        financialGoals: state.financialGoals.filter(goal => goal.id !== action.payload),
+      };
+      
     case 'SET_HABIT':
       return {
         ...state,
@@ -284,6 +366,7 @@ function reducer(state: AppState, action: Action): AppState {
           action.payload,
         ],
       };
+      
     case 'SET_HEALTH_SCORE':
       return {
         ...state,
@@ -292,47 +375,56 @@ function reducer(state: AppState, action: Action): AppState {
           action.payload,
         ],
       };
+      
+    case 'ARCHIVE_ITEM':
+      return {
+        ...state,
+        archivedItems: [...state.archivedItems, action.payload]
+      };
+      
+    case 'UPDATE_USER_PREFERENCES':
+      return {
+        ...state,
+        userPreferences: { ...state.userPreferences, ...action.payload }
+      };
+      
     default:
       return state;
   }
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(reducer, getInitialState());
 
-  // Load data from localStorage on app start
+  // Auto-save to localStorage whenever state changes
   useEffect(() => {
-    const savedData = localStorage.getItem('daily-organizer-data');
-    if (savedData) {
-      try {
-        const parsedData = JSON.parse(savedData);
-        // Restore saved state
-        Object.keys(parsedData).forEach(key => {
-          if (parsedData[key] && Array.isArray(parsedData[key])) {
-            dispatch({ type: `SET_${key.toUpperCase()}` as any, payload: parsedData[key] });
-          }
-        });
-      } catch (error) {
-        console.error('Failed to load saved data:', error);
-      }
-    }
-  }, []);
-
-  // Save data to localStorage whenever state changes
-  useEffect(() => {
+    // Prepare data for saving (convert dates to ISO strings)
     const dataToSave = {
       todos: state.todos,
       projects: state.projects,
       dailyPlans: state.dailyPlans,
+      goals: state.goals,
       healthScores: state.healthScores,
+      healthDimensions: state.healthDimensions,
       habits: state.habits,
+      habitLegend: state.habitLegend,
       financialAccounts: state.financialAccounts,
-      financialTransactions: state.financialTransactions,
-      financialGoals: state.financialGoals,
-      passwords: state.passwords
+      financialTransactions: state.financialTransactions.map(t => ({
+        ...t,
+        date: t.date.toISOString()
+      })),
+      financialGoals: state.financialGoals.map(g => ({
+        ...g,
+        deadline: g.deadline.toISOString()
+      })),
+      passwords: state.passwords,
+      completedTasks: state.completedTasks,
+      archivedItems: state.archivedItems,
+      userPreferences: state.userPreferences
     };
     
-    localStorage.setItem('daily-organizer-data', JSON.stringify(dataToSave));
+    // Save to localStorage with enhanced service
+    localStorageService.saveData(dataToSave);
   }, [state]);
 
   useEffect(() => {

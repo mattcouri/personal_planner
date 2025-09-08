@@ -48,8 +48,7 @@ export default function Passwords() {
 
   const handleDeletePassword = (passwordId: string) => {
     if (confirm('Are you sure you want to delete this password?')) {
-      // In a real app, you'd dispatch a DELETE_PASSWORD action
-      // For now, we'll just filter it out from the display
+      dispatch({ type: 'DELETE_PASSWORD', payload: passwordId });
     }
   };
 
@@ -307,6 +306,37 @@ function AddPasswordModal({
     e.preventDefault();
     const passwordData = {
       id: password?.id || uuidv4(),
+      ...formData,
+      lastUpdated: new Date().toISOString(),
+      strength: calculatePasswordStrength(formData.password)
+    };
+    
+    if (password) {
+      dispatch({ type: 'UPDATE_PASSWORD', payload: passwordData });
+    } else {
+      dispatch({ type: 'ADD_PASSWORD', payload: passwordData });
+    }
+    
+    onSave(passwordData);
+  };
+  
+  const calculatePasswordStrength = (password: string): string => {
+    if (password.length < 6) return 'weak';
+    if (password.length < 10) return 'medium';
+    if (password.match(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)) {
+      return 'strong';
+    }
+    return 'medium';
+  };
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+    let result = '';
+    for (let i = 0; i < 16; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setFormData({ ...formData, password: result });
+  };
       ...formData,
     };
     onSave(passwordData);

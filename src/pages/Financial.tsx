@@ -195,7 +195,25 @@ export default function Financial() {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Financial Goals
               </h3>
-              <button className="flex items-center space-x-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-all duration-200">
+              <button 
+                onClick={() => {
+                  const goalName = prompt('Enter goal name:');
+                  if (goalName) {
+                    const newGoal = {
+                      id: Date.now().toString(),
+                      name: goalName,
+                      targetAmount: 1000,
+                      currentAmount: 0,
+                      deadline: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+                      weeklyContribution: 50,
+                      category: 'savings',
+                      priority: 'medium'
+                    };
+                    dispatch({ type: 'ADD_FINANCIAL_GOAL', payload: newGoal });
+                  }
+                }}
+                className="flex items-center space-x-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-all duration-200"
+              >
                 <Plus className="w-4 h-4" />
                 <span>Add Goal</span>
               </button>
