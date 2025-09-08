@@ -2,6 +2,7 @@ import React from 'react';
 import { format, isSameDay } from 'date-fns';
 import { useCalendarStore } from '../../stores/calendarStore';
 import { googleCalendarApi } from '../../services/googleCalendarApi';
+import EventModal from './EventModal';
 
 const DayView: React.FC = () => {
   const {
@@ -10,6 +11,9 @@ const DayView: React.FC = () => {
     tasks,
     outOfOfficeEvents
   } = useCalendarStore();
+
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<{ date: Date; hour: number; minute: number } | null>(null);
 
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
@@ -82,38 +86,11 @@ const DayView: React.FC = () => {
     );
   };
 
-  const handleTimeSlotClick = async (hour: number) => {
-    const startTime = new Date(currentDate);
-    startTime.setHours(hour, 0, 0, 0);
-    
-    const endTime = new Date(startTime);
-    endTime.setHours(hour + 1, 0, 0, 0);
-    
-    const eventTitle = prompt('Enter event title:');
-    if (!eventTitle) return;
-    
-    try {
-      console.log('🚀 Creating event:', eventTitle, 'at', startTime);
-      const event = {
-        summary: eventTitle,
-        start: {
-          dateTime: startTime.toISOString(),
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-        },
-        end: {
-          dateTime: endTime.toISOString(),
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-        }
-      };
-      
-      await googleCalendarApi.createEvent('primary', event);
-      console.log('✅ Event created successfully!');
-      window.location.reload(); // Quick refresh - better to update state
-    } catch (error) {
-      console.error('❌ Failed to create event:', error);
-      alert('Failed to create event. Please try again.');
-    }
+  const handleTimeSlotClick = (hour: number) => {
+    setSelectedSlot({ date: currentDate, hour, minute: 0 });
+    setShowEventModal(true);
   };
+
   const dayTasks = getDayTasks();
 
   return (
@@ -148,6 +125,17 @@ const DayView: React.FC = () => {
           </div>
         </div>
       )}
+      
+      {/* Event Modal */}
+      <EventModal
+        isOpen={showEventModal}
+        onClose={() => {
+          setShowEventModal(false);
+          setSelectedSlot(null);
+        }}
+        selectedDate={selectedSlot?.date}
+        selectedTime={selectedSlot ? { hour: selectedSlot.hour, minute: selectedSlot.minute } : undefined}
+      />
 
       {/* Hourly schedule */}
       <div className="max-h-[600px] overflow-y-auto">

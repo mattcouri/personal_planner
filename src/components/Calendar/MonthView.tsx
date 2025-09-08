@@ -13,6 +13,7 @@ import {
 import { useCalendarStore } from '../../stores/calendarStore';
 import { CalendarEvent, Task, OutOfOfficeEvent } from '../../types/calendar';
 import { googleCalendarApi } from '../../services/googleCalendarApi';
+import EventModal from './EventModal';
 
 const MonthView: React.FC = () => {
   const {
@@ -24,6 +25,9 @@ const MonthView: React.FC = () => {
     outOfOfficeEvents,
     activeSchedulingType
   } = useCalendarStore();
+
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<{ date: Date; hour: number; minute: number } | null>(null);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -70,37 +74,16 @@ const MonthView: React.FC = () => {
     return { events: dayEvents, tasks: dayTasks, outOfOffice: dayOutOfOffice };
   };
 
-  const handleDayClick = async (day: Date, event: React.MouseEvent) => {
+  const handleDayClick = (day: Date, event: React.MouseEvent) => {
     // Only handle click if not clicking on an event
     if ((event.target as HTMLElement).closest('.event-item')) {
       return;
     }
     
-    const eventTitle = prompt(`Add event for ${format(day, 'MMM d, yyyy')}:`);
-    if (!eventTitle) return;
-    
-    try {
-      console.log('🚀 Creating all-day event:', eventTitle, 'on', day);
-      const eventData = {
-        summary: eventTitle,
-        start: {
-          date: format(day, 'yyyy-MM-dd'),
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-        },
-        end: {
-          date: format(day, 'yyyy-MM-dd'),
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-        }
-      };
-      
-      await googleCalendarApi.createEvent('primary', eventData);
-      console.log('✅ Event created successfully!');
-      window.location.reload(); // Quick refresh - better to update state
-    } catch (error) {
-      console.error('❌ Failed to create event:', error);
-      alert('Failed to create event. Please try again.');
-    }
+    setSelectedSlot({ date: day, hour: 12, minute: 0 });
+    setShowEventModal(true);
   };
+  
   const renderEventItem = (item: CalendarEvent | Task | OutOfOfficeEvent, type: string) => {
     const getEventColor = () => {
       switch (type) {
@@ -142,6 +125,17 @@ const MonthView: React.FC = () => {
           )}
         </div>
       </div>
+      
+      {/* Event Modal */}
+      <EventModal
+        isOpen={showEventModal}
+        onClose={() => {
+          setShowEventModal(false);
+          setSelectedSlot(null);
+        }}
+        selectedDate={selectedSlot?.date}
+        selectedTime={selectedSlot ? { hour: selectedSlot.hour, minute: selectedSlot.minute } : undefined}
+      />
     );
   };
 

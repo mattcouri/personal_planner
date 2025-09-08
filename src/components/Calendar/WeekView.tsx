@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { format, startOfWeek, addDays, isSameDay, isToday } from 'date-fns';
 import { useCalendarStore } from '../../stores/calendarStore';
 import { googleCalendarApi } from '../../services/googleCalendarApi';
+import EventModal from './EventModal';
 
 const WeekView: React.FC = () => {
   const {
@@ -15,6 +16,8 @@ const WeekView: React.FC = () => {
   } = useCalendarStore();
 
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<{ date: Date; hour: number; minute: number } | null>(null);
 
   // Update current time every minute
   useEffect(() => {
@@ -104,37 +107,9 @@ const WeekView: React.FC = () => {
     return { events: dayEvents, outOfOffice: dayOutOfOffice };
   };
 
-  const handleTimeSlotClick = async (day: Date, hour: number) => {
-    const startTime = new Date(day);
-    startTime.setHours(hour, 0, 0, 0);
-    
-    const endTime = new Date(startTime);
-    endTime.setHours(hour + 1, 0, 0, 0);
-    
-    const eventTitle = prompt('Enter event title:');
-    if (!eventTitle) return;
-    
-    try {
-      console.log('🚀 Creating event:', eventTitle, 'at', startTime);
-      const event = {
-        summary: eventTitle,
-        start: {
-          dateTime: startTime.toISOString(),
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-        },
-        end: {
-          dateTime: endTime.toISOString(),
-          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-        }
-      };
-      
-      await googleCalendarApi.createEvent('primary', event);
-      console.log('✅ Event created successfully!');
-      window.location.reload();
-    } catch (error) {
-      console.error('❌ Failed to create event:', error);
-      alert('Failed to create event. Please try again.');
-    }
+  const handleTimeSlotClick = (day: Date, hour: number, minute: number = 0) => {
+    setSelectedSlot({ date: day, hour, minute });
+    setShowEventModal(true);
   };
 
   const renderEvent = (event: any, type: 'event' | 'outOfOffice') => {
@@ -278,7 +253,7 @@ const WeekView: React.FC = () => {
                   <div
                     key={`${day.toString()}-${hour}`}
                     className="relative border-r border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/10 cursor-pointer transition-colors duration-200"
-                    onClick={() => handleTimeSlotClick(day, hour)}
+                    onClick={() => handleTimeSlotClick(day, hour, 0)}
                   >
                     {/* Events */}
                     {hourData.events.map(event => renderEvent(event, 'event'))}
@@ -307,6 +282,17 @@ const WeekView: React.FC = () => {
           )}
         </div>
       </div>
+      
+      {/* Event Modal */}
+      <EventModal
+        isOpen={showEventModal}
+        onClose={() => {
+          setShowEventModal(false);
+          setSelectedSlot(null);
+        }}
+        selectedDate={selectedSlot?.date}
+        selectedTime={selectedSlot ? { hour: selectedSlot.hour, minute: selectedSlot.minute } : undefined}
+      />
     </div>
   );
 };

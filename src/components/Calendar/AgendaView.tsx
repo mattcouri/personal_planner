@@ -2,6 +2,7 @@ import React from 'react';
 import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { useCalendarStore } from '../../stores/calendarStore';
 import { Clock, CheckSquare, Coffee, MapPin, Users } from 'lucide-react';
+import EventModal from './EventModal';
 
 const AgendaView: React.FC = () => {
   const {
@@ -10,6 +11,9 @@ const AgendaView: React.FC = () => {
     tasks,
     outOfOfficeEvents
   } = useCalendarStore();
+
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<{ date: Date; hour: number; minute: number } | null>(null);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -201,10 +205,30 @@ const AgendaView: React.FC = () => {
               <p className="text-sm">
                 No meetings, tasks, or out-of-office periods found for {format(currentDate, 'MMMM yyyy')}.
               </p>
+              <button
+                onClick={() => {
+                  setSelectedSlot({ date: new Date(), hour: 12, minute: 0 });
+                  setShowEventModal(true);
+                }}
+                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200"
+              >
+                Add Event
+              </button>
             </div>
           </div>
         )}
       </div>
+      
+      {/* Event Modal */}
+      <EventModal
+        isOpen={showEventModal}
+        onClose={() => {
+          setShowEventModal(false);
+          setSelectedSlot(null);
+        }}
+        selectedDate={selectedSlot?.date}
+        selectedTime={selectedSlot ? { hour: selectedSlot.hour, minute: selectedSlot.minute } : undefined}
+      />
     </div>
   );
 };
