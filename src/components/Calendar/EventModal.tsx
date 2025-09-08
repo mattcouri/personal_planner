@@ -185,8 +185,12 @@ const EventModal: React.FC<EventModalProps> = ({
         }
       }
 
-      // Refresh the page to show new event
-      window.location.reload();
+      // Refresh calendar data instead of full page reload
+      if (window.location.pathname === '/calendar') {
+        // Trigger a custom event to refresh calendar data
+        window.dispatchEvent(new CustomEvent('refreshCalendarData'));
+      }
+      
       onClose();
     } catch (error) {
       console.error('Failed to save event:', error);

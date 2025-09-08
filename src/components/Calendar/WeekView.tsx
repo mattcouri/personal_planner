@@ -57,8 +57,8 @@ const WeekView: React.FC = () => {
   };
 
   const getEventsForDayAndHour = (day: Date, hour: number) => {
-    console.log(`🔍 Getting events for ${format(day, 'yyyy-MM-dd')} hour ${hour}`);
-    console.log('📅 Total events in store:', events.length);
+    // console.log(`🔍 Getting events for ${format(day, 'yyyy-MM-dd')} hour ${hour}`);
+    // console.log('📅 Total events in store:', events.length);
     
     const dayEvents = events.filter(event => {
       // Handle both dateTime and date formats
@@ -73,7 +73,7 @@ const WeekView: React.FC = () => {
       }
       
       if (!eventDate) {
-        console.log('❌ Event has no valid start date:', event);
+        // console.log('❌ Event has no valid start date:', event);
         return false;
       }
       
@@ -81,7 +81,7 @@ const WeekView: React.FC = () => {
       const isSameHour = eventDate.getHours() === hour;
       
       if (isSameDay && isSameHour) {
-        console.log('✅ Found event for this slot:', event.summary || event.title);
+        // console.log('✅ Found event for this slot:', event.summary || event.title);
       }
       
       return isSameDay && isSameHour;
@@ -103,7 +103,7 @@ const WeekView: React.FC = () => {
       return eventDate.toDateString() === day.toDateString() && eventDate.getHours() === hour;
     });
 
-    console.log(`📊 Found ${dayEvents.length} events and ${dayOutOfOffice.length} out-of-office for ${format(day, 'yyyy-MM-dd')} ${hour}:00`);
+    // console.log(`📊 Found ${dayEvents.length} events and ${dayOutOfOffice.length} out-of-office for ${format(day, 'yyyy-MM-dd')} ${hour}:00`);
     return { events: dayEvents, outOfOffice: dayOutOfOffice };
   };
 
@@ -113,7 +113,7 @@ const WeekView: React.FC = () => {
   };
 
   const renderEvent = (event: any, type: 'event' | 'outOfOffice') => {
-    console.log('🎨 Rendering event:', event.summary || event.title, 'type:', type);
+    // console.log('🎨 Rendering event:', event.summary || event.title, 'type:', type);
     
     // Calculate duration and positioning
     let duration = 60; // Default 1 hour
@@ -201,8 +201,8 @@ const WeekView: React.FC = () => {
     return weekDays.findIndex(day => isSameDay(day, now));
   };
 
-  console.log('🔄 WeekView render - Events in store:', events.length);
-  console.log('📅 Sample event:', events[0]);
+  // console.log('🔄 WeekView render - Events in store:', events.length);
+  // console.log('📅 Sample event:', events[0]);
 
   return (
     <div className="flex-1 bg-white dark:bg-gray-800 overflow-hidden">

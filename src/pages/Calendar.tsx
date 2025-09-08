@@ -46,6 +46,14 @@ const Calendar: React.FC = () => {
   useEffect(() => {
     initializeCalendar();
     
+    // Listen for calendar refresh events
+    const handleRefresh = () => {
+      console.log('🔄 Refreshing calendar data...');
+      loadCalendarData();
+    };
+    
+    window.addEventListener('refreshCalendarData', handleRefresh);
+    
     // Handle auth callback messages
     const authParam = searchParams.get('auth');
     if (authParam === 'success') {
@@ -59,6 +67,10 @@ const Calendar: React.FC = () => {
       // Clear the URL parameter to avoid repeated messages
       window.history.replaceState({}, '', '/calendar');
     }
+    
+    return () => {
+      window.removeEventListener('refreshCalendarData', handleRefresh);
+    };
   }, [searchParams]);
 
   const initializeCalendar = async () => {
@@ -122,50 +134,56 @@ const Calendar: React.FC = () => {
 
       // Load events
       console.log('📅 Fetching events...');
-      const eventsResponse = await googleCalendarApi.getEvents();
+      const now = new Date();
+      const timeMin = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+      const timeMax = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString();
+      
+      const eventsResponse = await googleCalendarApi.getEvents('primary', timeMin, timeMax, 250);
       console.log('📅 Events response:', eventsResponse);
       
       // Transform Google Calendar events to our format
-const transformedEvents = (eventsResponse.items || []).map(event => {
-  const transformedEvent = {
-    ...event,
-    summary: event.summary || event.title || 'Untitled Event',
-  };
+      const transformedEvents = (eventsResponse.items || []).map(event => {
+        console.log('🔍 Processing event:', event.summary, event);
+        
+        const transformedEvent = {
+          ...event,
+          summary: event.summary || event.title || 'Untitled Event',
+        };
 
-  // Normalize start time
-  if (event.start?.dateTime) {
-    transformedEvent.start = {
-      ...event.start,
-      dateTime: new Date(event.start.dateTime).toISOString()
-    };
-  } else if (event.start?.date) {
-    // Handle all-day events
-    transformedEvent.start = {
-      ...event.start,
-      dateTime: new Date(event.start.date).toISOString()
-    };
-  } else {
-    transformedEvent.start = { dateTime: new Date().toISOString() };
-  }
+        // Normalize start time
+        if (event.start?.dateTime) {
+          transformedEvent.start = {
+            ...event.start,
+            dateTime: new Date(event.start.dateTime).toISOString()
+          };
+        } else if (event.start?.date) {
+          // Handle all-day events
+          transformedEvent.start = {
+            ...event.start,
+            dateTime: new Date(event.start.date).toISOString()
+          };
+        } else {
+          transformedEvent.start = { dateTime: new Date().toISOString() };
+        }
 
-  // Normalize end time
-  if (event.end?.dateTime) {
-    transformedEvent.end = {
-      ...event.end,
-      dateTime: new Date(event.end.dateTime).toISOString()
-    };
-  } else if (event.end?.date) {
-    // Handle all-day events
-    transformedEvent.end = {
-      ...event.end,
-      dateTime: new Date(event.end.date).toISOString()
-    };
-  } else {
-    transformedEvent.end = { dateTime: new Date(Date.now() + 3600000).toISOString() };
-  }
+        // Normalize end time
+        if (event.end?.dateTime) {
+          transformedEvent.end = {
+            ...event.end,
+            dateTime: new Date(event.end.dateTime).toISOString()
+          };
+        } else if (event.end?.date) {
+          // Handle all-day events
+          transformedEvent.end = {
+            ...event.end,
+            dateTime: new Date(event.end.date).toISOString()
+          };
+        } else {
+          transformedEvent.end = { dateTime: new Date(Date.now() + 3600000).toISOString() };
+        }
 
-  return transformedEvent;
-});
+        return transformedEvent;
+      });
       
       console.log('📅 Transformed events:', transformedEvents);
       setEvents(transformedEvents);

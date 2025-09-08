@@ -11,13 +11,13 @@ class GoogleCalendarApiService {
     url: string,
     options: RequestInit = {}
   ): Promise<T> {
-    console.log('🌐 ===== API REQUEST =====');
-    console.log('URL:', url);
-    console.log('Method:', options.method || 'GET');
+    // console.log('🌐 ===== API REQUEST =====');
+    // console.log('URL:', url);
+    // console.log('Method:', options.method || 'GET');
     
     try {
       const accessToken = await googleAuthService.getValidAccessToken();
-      console.log('🔑 Got access token for API call');
+      // console.log('🔑 Got access token for API call');
       
       const response = await fetch(url, {
         ...options,
@@ -28,20 +28,20 @@ class GoogleCalendarApiService {
         },
       });
 
-      console.log('📡 API Response Status:', response.status);
-      console.log('📡 API Response OK:', response.ok);
+      // console.log('📡 API Response Status:', response.status);
+      // console.log('📡 API Response OK:', response.ok);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ API Error Response:', errorText);
+        console.error('❌ Google Calendar API Error:', response.status, errorText);
         throw new Error(`API request failed: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      console.log('✅ API Success - Data received:', !!data);
+      console.log('✅ Google Calendar API Success - Events loaded:', data.items?.length || 0);
       return data;
     } catch (error) {
-      console.error('💥 API Request Failed:', error);
+      console.error('💥 Google Calendar API Request Failed:', error);
       throw error;
     }
   }
@@ -122,11 +122,11 @@ class GoogleCalendarApiService {
   }
 
   async getTasks(taskListId: string): Promise<{ items: Task[] }> {
-    console.log(`🔍 Making API request to get tasks for list: ${taskListId}`);
+    // console.log(`🔍 Making API request to get tasks for list: ${taskListId}`);
     const url = `${this.tasksUrl}/lists/${taskListId}/tasks`;
-    console.log('📡 API URL:', url);
+    // console.log('📡 API URL:', url);
     const result = await this.makeRequest(url);
-    console.log('✅ API Response:', result);
+    // console.log('✅ API Response:', result);
     return result;
   }
 
