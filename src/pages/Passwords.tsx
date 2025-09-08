@@ -284,6 +284,7 @@ function AddPasswordModal({
   onClose: () => void;
   onSave: (password: any) => void;
 }) {
+  const { dispatch } = useData();
   const [formData, setFormData] = useState({
     name: password?.name || '',
     description: password?.description || '',
@@ -302,8 +303,18 @@ function AddPasswordModal({
     setFormData({ ...formData, password: result });
   };
 
+  const calculatePasswordStrength = (password: string): string => {
+    if (password.length < 6) return 'weak';
+    if (password.length < 10) return 'medium';
+    if (password.match(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)) {
+      return 'strong';
+    }
+    return 'medium';
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
     const passwordData = {
       id: password?.id || uuidv4(),
       ...formData,
@@ -317,28 +328,6 @@ function AddPasswordModal({
       dispatch({ type: 'ADD_PASSWORD', payload: passwordData });
     }
     
-    onSave(passwordData);
-  };
-  
-  const calculatePasswordStrength = (password: string): string => {
-    if (password.length < 6) return 'weak';
-    if (password.length < 10) return 'medium';
-    if (password.match(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)) {
-      return 'strong';
-    }
-    return 'medium';
-  };
-
-  const generatePassword = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
-    let result = '';
-    for (let i = 0; i < 16; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setFormData({ ...formData, password: result });
-  };
-      ...formData,
-    };
     onSave(passwordData);
   };
 
