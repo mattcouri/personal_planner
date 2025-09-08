@@ -168,7 +168,6 @@ class LocalStorageService {
       if (!stored) {
         console.log('🆕 No existing data found, initializing with defaults');
         const defaultData = this.getDefaultSchema();
-        this.saveData(defaultData);
         return defaultData;
       }
 
@@ -178,7 +177,6 @@ class LocalStorageService {
       if (!parsed.version || parsed.version < this.CURRENT_VERSION) {
         console.log('🔄 Migrating data from version', parsed.version || 1, 'to', this.CURRENT_VERSION);
         const migrated = this.migrateData(parsed);
-        this.saveData(migrated);
         return migrated;
       }
 
@@ -191,7 +189,6 @@ class LocalStorageService {
       console.error('❌ Failed to load data from localStorage:', error);
       console.log('🔄 Falling back to default data');
       const defaultData = this.getDefaultSchema();
-      this.saveData(defaultData);
       return defaultData;
     }
   }
@@ -202,16 +199,14 @@ class LocalStorageService {
       // Create backup before saving
       this.createBackup();
 
-      // Merge with existing data
-      const existing = this.loadData();
-      const merged = {
-        ...existing,
+      // Save the provided data directly
+      const dataToSave = {
         ...data,
         version: this.CURRENT_VERSION,
         lastSync: new Date().toISOString()
       };
 
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(merged));
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(dataToSave));
       console.log('💾 Data saved to localStorage successfully');
 
     } catch (error) {
@@ -220,7 +215,12 @@ class LocalStorageService {
       // Try to clear some space and retry
       this.cleanupStorage();
       try {
-        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
+        const dataToSave = {
+          ...data,
+          version: this.CURRENT_VERSION,
+          lastSync: new Date().toISOString()
+        };
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(dataToSave));
         console.log('💾 Data saved after cleanup');
       } catch (retryError) {
         console.error('❌ Failed to save even after cleanup:', retryError);
