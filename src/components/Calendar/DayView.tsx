@@ -93,49 +93,41 @@ const DayView: React.FC = () => {
     const duration = event.end?.dateTime && event.start?.dateTime
       ? (new Date(event.end.dateTime).getTime() - new Date(event.start.dateTime).getTime()) / (1000 * 60)
       : 60;
+    const startMinute = taskDueDate.getMinutes();
+    const height = 24; // 30 minutes visual duration
     
     const height = Math.max((duration / 60) * 80, 40); // Minimum 40px height
 
-    // Check RSVP status for visual styling
-    const rsvpStatus = getUserRSVPStatus(event);
-    const isConfirmed = rsvpStatus === 'accepted';
-    
     let colorClass = '';
     if (type === 'outOfOffice') {
       colorClass = 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-700/50';
     } else {
-      // Event styling based on RSVP status
-      if (isConfirmed) {
-        colorClass = 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700/50';
-      } else {
-        // Hollow/outline style for unconfirmed events
-        const eventDate = new Date(event.start.date + 'T00:00:00');
-        return isSameDay(eventDate, day);
-      }
+      // Events are always green (no RSVP styling for now)
+      colorClass = 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-700/50';
     }
 
     return (
       <div
-        key={event.id}
-        className={`p-3 rounded-lg border cursor-pointer hover:shadow-md transition-all duration-200 mb-2 ${colorClass}`}
+            ? 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400'
+            : 'bg-blue-500 text-white'
         style={{ minHeight: `${height}px` }}
+        style={{ 
+          height: `${height}px`,
+          top: `${(startMinute / 60) * 80}px` // Adjust for day view scaling
+        }}
         onClick={(e) => {
           e.stopPropagation();
-          handleEventClick(event, 'event');
+          handleEventClick(task, 'task');
         }}
+        title={task.title}
       >
-        <div className="font-medium text-sm mb-1">{event.summary || event.title}</div>
+        <div className={`flex items-center space-x-1 ${isCompleted ? 'line-through' : ''}`}>
         {event.start?.dateTime && (
           <div className="text-xs opacity-75 mb-1">
             {format(new Date(event.start.dateTime), 'HH:mm')}
             {event.end?.dateTime && ` - ${format(new Date(event.end.dateTime), 'HH:mm')}`}
-          </div>
-        )}
-        {event.description && (
-          <div className="text-xs opacity-75 line-clamp-2">{event.description}</div>
-        )}
-        {event.location && (
-          <div className="text-xs opacity-75 mt-1">📍 {event.location}</div>
+          <span className="font-medium truncate">{task.title}</span>
+          <span className="text-xs opacity-75">{timeStr}</span>
         )}
       </div>
     );
@@ -183,7 +175,7 @@ const DayView: React.FC = () => {
         return taskDate.getHours() === 0 && taskDate.getMinutes() === 0;
       }).length > 0 && (
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-900/10">
-          <h4 className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-2">All-day Tasks</h4>
+          <h4 className="text-sm font-medium text-blue-700 dark:text-blue-300 mb-2">Tasks (No Specific Time)</h4>
           <div className="space-y-2">
             {dayTasks
               .filter(task => {
@@ -205,7 +197,6 @@ const DayView: React.FC = () => {
               >
                 <CheckSquare className="w-4 h-4" />
                 <span className={isCompleted ? 'line-through' : ''}>{task.title}</span>
-                {isCompleted && <span className="text-green-500">✓</span>}
               </div>
             );
           })}
@@ -243,7 +234,7 @@ const DayView: React.FC = () => {
       <div className="max-h-[600px] overflow-y-auto">
         {hours.map(hour => {
           const hourData = getEventsForHour(hour);
-          const hasEvents = hourData.events.length > 0 || hourData.outOfOffice.length > 0;
+          const hasEvents = hourData.events.length > 0 || hourData.outOfOffice.length > 0 || hourData.tasks.length > 0;
 
           return (
             <div key={hour} className="flex border-b border-gray-200 dark:border-gray-700 min-h-[80px]">
@@ -254,7 +245,7 @@ const DayView: React.FC = () => {
               
               {/* Events column */}
               <div 
-                className="flex-1 p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-all duration-200"
+                className="flex-1 p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-all duration-200 relative"
                 onClick={() => handleTimeSlotClick(hour)}
                 title={`Click to add event at ${format(new Date().setHours(hour, 0, 0, 0), 'HH:mm')}`}
               >
@@ -262,6 +253,7 @@ const DayView: React.FC = () => {
                   <div className="space-y-2">
                     {hourData.events.map(event => renderEvent(event, 'event'))}
                     {hourData.outOfOffice.map(event => renderEvent(event, 'outOfOffice'))}
+                    {hourData.tasks.map(task => renderTaskInHour(task))}
                   </div>
                 ) : (
                   <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-500 text-sm opacity-0 hover:opacity-100 transition-opacity duration-200">
@@ -271,7 +263,6 @@ const DayView: React.FC = () => {
               </div>
             </div>
           );
-          {hourData.tasks.map(task => renderTaskInHour(task))}
         })}
       </div>
     </div>

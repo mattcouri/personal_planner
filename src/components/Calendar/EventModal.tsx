@@ -10,7 +10,8 @@ import {
   Repeat,
   Bell,
   Globe,
-  ChevronDown
+  ChevronDown,
+  CheckSquare
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useCalendarStore } from '../../stores/calendarStore';
@@ -25,14 +26,6 @@ interface EventModalProps {
 }
 
 type EventType = 'event' | 'task' | 'outOfOffice' | 'appointmentSchedule';
-
-interface RecurrenceRule {
-  frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY' | 'CUSTOM';
-  interval?: number;
-  byDay?: string[];
-  until?: string;
-  count?: number;
-}
 
 const EventModal: React.FC<EventModalProps> = ({
   isOpen,
@@ -59,39 +52,50 @@ const EventModal: React.FC<EventModalProps> = ({
     guests: '',
     addGoogleMeet: false,
     recurrence: 'none' as string,
-    customRecurrence: {
-      frequency: 'WEEKLY' as RecurrenceRule['frequency'],
-      interval: 1,
-      byDay: [] as string[],
-      until: '',
-      count: undefined as number | undefined
-    },
-    reminders: [{ method: 'popup', minutes: 10 }],
-    visibility: 'default' as 'default' | 'public' | 'private',
-    showAs: 'busy' as 'busy' | 'free',
+    taskList: 'default',
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
   });
 
   // Initialize form with selected date/time or editing event
   useEffect(() => {
     if (editingEvent) {
-      // Populate form with existing event data
-      const startDate = new Date(editingEvent.start.dateTime || editingEvent.start.date);
-      const endDate = new Date(editingEvent.end.dateTime || editingEvent.end.date);
-      
-      setFormData({
-        ...formData,
-        title: editingEvent.summary || '',
-        description: editingEvent.description || '',
-        startDate: format(startDate, 'yyyy-MM-dd'),
-        startTime: editingEvent.start.dateTime ? format(startDate, 'HH:mm') : '12:00',
-        endDate: format(endDate, 'yyyy-MM-dd'),
-        endTime: editingEvent.end.dateTime ? format(endDate, 'HH:mm') : '13:00',
-        allDay: !editingEvent.start.dateTime,
-        location: editingEvent.location || '',
-        guests: editingEvent.attendees?.map(a => a.email).join(', ') || '',
-        addGoogleMeet: !!editingEvent.conferenceData,
-      });
+      // Determine if this is a task or event
+      if (editingEvent.kind === 'tasks#task' || editingEvent.due) {
+        setActiveTab('task');
+        
+        const dueDate = editingEvent.due ? new Date(editingEvent.due) : new Date();
+        setFormData({
+          ...formData,
+          title: editingEvent.title || '',
+          description: editingEvent.notes || '',
+          startDate: format(dueDate, 'yyyy-MM-dd'),
+          startTime: format(dueDate, 'HH:mm'),
+          endDate: format(dueDate, 'yyyy-MM-dd'),
+          endTime: format(dueDate, 'HH:mm'),
+          allDay: false,
+        });
+      } else {
+        // It's an event
+        setActiveTab('event');
+        
+        const startDate = new Date(editingEvent.start.dateTime || editingEvent.start.date);
+        const endDate = new Date(editingEvent.end.dateTime || editingEvent.end.date);
+        const isAllDay = !editingEvent.start.dateTime;
+        
+        setFormData({
+          ...formData,
+          title: editingEvent.summary || '',
+          description: editingEvent.description || '',
+          startDate: format(startDate, 'yyyy-MM-dd'),
+          startTime: isAllDay ? '12:00' : format(startDate, 'HH:mm'),
+          endDate: format(endDate, 'yyyy-MM-dd'),
+          endTime: isAllDay ? '13:00' : format(endDate, 'HH:mm'),
+          allDay: isAllDay,
+          location: editingEvent.location || '',
+          guests: editingEvent.attendees?.map(a => a.email).join(', ') || '',
+          addGoogleMeet: !!editingEvent.conferenceData,
+        });
+      }
     } else if (selectedDate) {
       // Pre-fill with selected date/time
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -99,11 +103,12 @@ const EventModal: React.FC<EventModalProps> = ({
         `${selectedTime.hour.toString().padStart(2, '0')}:${selectedTime.minute.toString().padStart(2, '0')}` : 
         '12:00';
       
-      // Calculate end time (1 hour later)
+      // For events: Calculate end time (1 hour later)
+      // For tasks: End time same as start time (no duration)
       const startHour = selectedTime?.hour || 12;
       const startMinute = selectedTime?.minute || 0;
-      const endHour = startMinute === 30 ? startHour + 1 : startHour;
-      const endMinute = startMinute === 30 ? 0 : 30;
+      const endHour = activeTab === 'task' ? startHour : (startMinute === 30 ? startHour + 1 : startHour);
+      const endMinute = activeTab === 'task' ? startMinute : (startMinute === 30 ? 0 : 30);
       const endTime = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
       
       setFormData({
@@ -111,10 +116,10 @@ const EventModal: React.FC<EventModalProps> = ({
         startDate: dateStr,
         endDate: dateStr,
         startTime,
-        endTime
+        endTime: activeTab === 'task' ? startTime : endTime
       });
     }
-  }, [selectedDate, selectedTime, editingEvent]);
+  }, [selectedDate, selectedTime, editingEvent, activeTab]);
 
   const eventTypes = [
     { key: 'event', label: 'Event', description: 'Meeting or appointment' },
@@ -139,17 +144,17 @@ const EventModal: React.FC<EventModalProps> = ({
 
     try {
       if (activeTab === 'task') {
-        // Create Google Task
+        // Create Google Task with proper due date/time
+        const dueDateTime = new Date(`${formData.startDate}T${formData.startTime}:00`);
+        
         const taskData = {
           title: formData.title,
           notes: formData.description,
-          due: formData.allDay ? 
-            `${formData.startDate}T00:00:00.000Z` :
-            new Date(`${formData.startDate}T${formData.startTime}`).toISOString(),
+          due: dueDateTime.toISOString(),
           status: 'needsAction'
         };
 
-        if (editingEvent) {
+        if (editingEvent && (editingEvent.kind === 'tasks#task' || editingEvent.due)) {
           // Update existing task
           const taskLists = await googleCalendarApi.getTaskLists();
           const defaultTaskList = taskLists.items?.[0];
@@ -166,23 +171,9 @@ const EventModal: React.FC<EventModalProps> = ({
         }
       } else {
         // Create Calendar Event
-        const startDateTime = formData.allDay ? 
-          undefined : 
-          new Date(`${formData.startDate}T${formData.startTime}`).toISOString();
-        
-        const endDateTime = formData.allDay ? 
-          undefined : 
-          new Date(`${formData.endDate}T${formData.endTime}`).toISOString();
-
-        const eventData = {
+        let eventData: any = {
           summary: formData.title,
           description: formData.description,
-          start: formData.allDay ? 
-            { date: formData.startDate, timeZone: formData.timeZone } :
-            { dateTime: startDateTime, timeZone: formData.timeZone },
-          end: formData.allDay ? 
-            { date: formData.endDate, timeZone: formData.timeZone } :
-            { dateTime: endDateTime, timeZone: formData.timeZone },
           location: formData.location,
           attendees: formData.guests ? 
             formData.guests.split(',').map(email => ({ email: email.trim() })) : 
@@ -196,13 +187,38 @@ const EventModal: React.FC<EventModalProps> = ({
           recurrence: buildRecurrenceRule(),
           reminders: {
             useDefault: false,
-            overrides: formData.reminders
+            overrides: [{ method: 'popup', minutes: 10 }]
           },
-          visibility: formData.visibility,
-          transparency: formData.showAs === 'free' ? 'transparent' : 'opaque'
+          visibility: 'default',
+          transparency: 'opaque'
         };
 
-        if (editingEvent) {
+        if (formData.allDay) {
+          // All-day event: same start and end date, no time
+          eventData.start = { 
+            date: formData.startDate,
+            timeZone: formData.timeZone 
+          };
+          eventData.end = { 
+            date: formData.startDate, // Same date for all-day events
+            timeZone: formData.timeZone 
+          };
+        } else {
+          // Timed event: specific start and end times
+          const startDateTime = new Date(`${formData.startDate}T${formData.startTime}:00`);
+          const endDateTime = new Date(`${formData.endDate}T${formData.endTime}:00`);
+          
+          eventData.start = { 
+            dateTime: startDateTime.toISOString(),
+            timeZone: formData.timeZone 
+          };
+          eventData.end = { 
+            dateTime: endDateTime.toISOString(),
+            timeZone: formData.timeZone 
+          };
+        }
+
+        if (editingEvent && !editingEvent.kind?.includes('task')) {
           await googleCalendarApi.updateEvent('primary', editingEvent.id, eventData);
         } else {
           if (formData.addGoogleMeet) {
@@ -213,16 +229,12 @@ const EventModal: React.FC<EventModalProps> = ({
         }
       }
 
-      // Refresh calendar data instead of full page reload
-      if (window.location.pathname === '/calendar') {
-        // Trigger a custom event to refresh calendar data
-        window.dispatchEvent(new CustomEvent('refreshCalendarData'));
-      }
-      
+      // Refresh calendar data
+      window.dispatchEvent(new CustomEvent('refreshCalendarData'));
       onClose();
     } catch (error) {
-      console.error('Failed to save event:', error);
-      alert('Failed to save event. Please try again.');
+      console.error('Failed to save:', error);
+      alert('Failed to save. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -250,23 +262,6 @@ const EventModal: React.FC<EventModalProps> = ({
       case 'weekdays':
         rules.push('RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR');
         break;
-      case 'custom':
-        // Build custom recurrence rule
-        let rule = `RRULE:FREQ=${formData.customRecurrence.frequency}`;
-        if (formData.customRecurrence.interval > 1) {
-          rule += `;INTERVAL=${formData.customRecurrence.interval}`;
-        }
-        if (formData.customRecurrence.byDay.length > 0) {
-          rule += `;BYDAY=${formData.customRecurrence.byDay.join(',')}`;
-        }
-        if (formData.customRecurrence.until) {
-          rule += `;UNTIL=${formData.customRecurrence.until}`;
-        }
-        if (formData.customRecurrence.count) {
-          rule += `;COUNT=${formData.customRecurrence.count}`;
-        }
-        rules.push(rule);
-        break;
     }
 
     return rules;
@@ -276,6 +271,7 @@ const EventModal: React.FC<EventModalProps> = ({
     setFormData({
       ...formData,
       allDay: checked,
+      endDate: checked ? formData.startDate : formData.endDate, // Same date for all-day
       startTime: checked ? '' : '12:00',
       endTime: checked ? '' : '13:00'
     });
@@ -323,127 +319,172 @@ const EventModal: React.FC<EventModalProps> = ({
             ))}
           </div>
 
-          {/* Date and Time */}
+          {/* Date and Time - Different for Events vs Tasks */}
           <div className="flex items-center space-x-4">
             <Clock className="w-5 h-5 text-gray-400" />
             <div className="flex-1 space-y-3">
-              <div className="flex items-center space-x-4">
-                <input
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-                {!formData.allDay && (
-                  <>
+              {activeTab === 'event' ? (
+                // Event: Start date/time and End date/time
+                <>
+                  <div className="flex items-center space-x-4">
                     <input
-                      type="time"
-                      value={formData.startTime}
-                      onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => setFormData({ 
+                        ...formData, 
+                        startDate: e.target.value,
+                        endDate: formData.allDay ? e.target.value : formData.endDate // Keep same date for all-day
+                      })}
                       className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
-                    <span className="text-gray-500">–</span>
-                    <input
-                      type="time"
-                      value={formData.endTime}
-                      onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                      className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    />
-                  </>
-                )}
-              </div>
-              
-              <div className="flex items-center space-x-4">
-                <label className="flex items-center space-x-2">
+                    {!formData.allDay && (
+                      <>
+                        <input
+                          type="time"
+                          value={formData.startTime}
+                          onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        />
+                        <span className="text-gray-500">–</span>
+                        <input
+                          type="date"
+                          value={formData.endDate}
+                          onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        />
+                        <input
+                          type="time"
+                          value={formData.endTime}
+                          onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        />
+                      </>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center space-x-4">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.allDay}
+                        onChange={(e) => handleAllDayToggle(e.target.checked)}
+                        className="rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">All day</span>
+                    </label>
+                  </div>
+                </>
+              ) : (
+                // Task: Only date and start time (no end time, no duration)
+                <div className="flex items-center space-x-4">
                   <input
-                    type="checkbox"
-                    checked={formData.allDay}
-                    onChange={(e) => handleAllDayToggle(e.target.checked)}
-                    className="rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
-                  <span className="text-sm text-gray-700 dark:text-gray-300">All day</span>
-                </label>
-                
-                <button
-                  type="button"
-                  className="text-sm text-blue-500 hover:text-blue-600"
-                >
-                  Time zone
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Recurrence */}
-          <div className="flex items-center space-x-4">
-            <Repeat className="w-5 h-5 text-gray-400" />
-            <div className="flex-1 relative">
-              <button
-                type="button"
-                onClick={() => setShowRecurrenceDropdown(!showRecurrenceDropdown)}
-                className="w-full text-left px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white flex items-center justify-between"
-              >
-                <span>{recurrenceOptions.find(opt => opt.value === formData.recurrence)?.label || 'Does not repeat'}</span>
-                <ChevronDown className="w-4 h-4" />
-              </button>
-              
-              {showRecurrenceDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
-                  {recurrenceOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => {
-                        setFormData({ ...formData, recurrence: option.value });
-                        setShowRecurrenceDropdown(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-900 dark:text-white"
-                    >
-                      {option.label}
-                    </button>
-                  ))}
+                  <input
+                    type="time"
+                    value={formData.startTime}
+                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                    Tasks have no duration - just a start time
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Guests */}
-          <div className="flex items-center space-x-4">
-            <Users className="w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              value={formData.guests}
-              onChange={(e) => setFormData({ ...formData, guests: e.target.value })}
-              placeholder="Add guests"
-              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500"
-            />
-          </div>
+          {/* Event-specific fields */}
+          {activeTab === 'event' && (
+            <>
+              {/* Recurrence */}
+              <div className="flex items-center space-x-4">
+                <Repeat className="w-5 h-5 text-gray-400" />
+                <div className="flex-1 relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowRecurrenceDropdown(!showRecurrenceDropdown)}
+                    className="w-full text-left px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white flex items-center justify-between"
+                  >
+                    <span>{recurrenceOptions.find(opt => opt.value === formData.recurrence)?.label || 'Does not repeat'}</span>
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                  
+                  {showRecurrenceDropdown && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg z-10 max-h-60 overflow-y-auto">
+                      {recurrenceOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, recurrence: option.value });
+                            setShowRecurrenceDropdown(false);
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-900 dark:text-white"
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
 
-          {/* Google Meet */}
-          <div className="flex items-center space-x-4">
-            <Video className="w-5 h-5 text-gray-400" />
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.addGoogleMeet}
-                onChange={(e) => setFormData({ ...formData, addGoogleMeet: e.target.checked })}
-                className="rounded border-gray-300 text-blue-500 focus:ring-blue-500"
-              />
-              <span className="text-gray-700 dark:text-gray-300">Add Google Meet video conferencing</span>
-            </label>
-          </div>
+              {/* Guests */}
+              <div className="flex items-center space-x-4">
+                <Users className="w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  value={formData.guests}
+                  onChange={(e) => setFormData({ ...formData, guests: e.target.value })}
+                  placeholder="Add guests"
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500"
+                />
+              </div>
 
-          {/* Location */}
-          <div className="flex items-center space-x-4">
-            <MapPin className="w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              placeholder="Add location"
-              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500"
-            />
-          </div>
+              {/* Google Meet */}
+              <div className="flex items-center space-x-4">
+                <Video className="w-5 h-5 text-gray-400" />
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.addGoogleMeet}
+                    onChange={(e) => setFormData({ ...formData, addGoogleMeet: e.target.checked })}
+                    className="rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                  />
+                  <span className="text-gray-700 dark:text-gray-300">Add Google Meet video conferencing</span>
+                </label>
+              </div>
+
+              {/* Location */}
+              <div className="flex items-center space-x-4">
+                <MapPin className="w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  placeholder="Add location"
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500"
+                />
+              </div>
+            </>
+          )}
+
+          {/* Task-specific fields */}
+          {activeTab === 'task' && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/50 rounded-lg p-4">
+              <div className="flex items-center space-x-2 mb-2">
+                <CheckSquare className="w-4 h-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-900 dark:text-blue-100">Task Details</span>
+              </div>
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                Tasks are created in Google Tasks and appear with a blue checkmark icon. They have a due date and time but no duration.
+              </p>
+            </div>
+          )}
 
           {/* Description */}
           <div className="flex items-start space-x-4">
@@ -451,7 +492,7 @@ const EventModal: React.FC<EventModalProps> = ({
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Add description or a Google Drive attachment"
+              placeholder={activeTab === 'task' ? 'Add task description' : 'Add description or a Google Drive attachment'}
               rows={3}
               className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 resize-none"
             />
@@ -462,11 +503,16 @@ const EventModal: React.FC<EventModalProps> = ({
             <CalendarIcon className="w-5 h-5 text-gray-400" />
             <div className="flex-1">
               <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                <span className="text-gray-700 dark:text-gray-300">Matthew Couri</span>
+                <div className={`w-3 h-3 rounded-full ${activeTab === 'task' ? 'bg-blue-500' : 'bg-green-500'}`}></div>
+                <span className="text-gray-700 dark:text-gray-300">
+                  {activeTab === 'task' ? 'Tasks' : 'Matthew Couri'}
+                </span>
               </div>
               <div className="text-sm text-gray-500 mt-1">
-                Busy • Default visibility • Notify 10 minutes before
+                {activeTab === 'task' 
+                  ? 'Google Tasks • No duration • Blue checkmark'
+                  : 'Google Calendar • Busy • Default visibility • Notify 10 minutes before'
+                }
               </div>
             </div>
           </div>

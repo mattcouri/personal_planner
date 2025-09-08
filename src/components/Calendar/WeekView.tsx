@@ -132,6 +132,7 @@ const WeekView: React.FC = () => {
         const taskDueDate = new Date(task.due);
         const isSameDay = taskDueDate.toDateString() === day.toDateString();
         const isSameHour = taskDueDate.getHours() === hour;
+        console.log(`🔍 Task "${task.title}" due: ${task.due} -> parsed: ${taskDueDate} -> same day? ${isSameDay} -> same hour (${hour})? ${isSameHour}`);
         return isSameDay && isSameHour;
       }
       return false;
@@ -142,7 +143,7 @@ const WeekView: React.FC = () => {
     return events.filter(event => {
       // Only include events that have a date (not dateTime) - these are all-day events
       if (event.start?.date && !event.start?.dateTime) {
-        const eventDate = new Date(event.start.date);
+        const eventDate = new Date(event.start.date + 'T00:00:00');
         console.log(`📅 All-day event "${event.summary}" date: ${event.start.date} -> parsed: ${eventDate} -> same day as ${format(day, 'yyyy-MM-dd')}? ${isSameDay(eventDate, day)}`);
         return isSameDay(eventDate, day);
       }
@@ -252,18 +253,20 @@ const WeekView: React.FC = () => {
     const taskDueDate = new Date(task.due);
     const timeStr = format(taskDueDate, 'HH:mm');
     const isCompleted = task.status === 'completed';
+    const startMinute = taskDueDate.getMinutes();
+    const topOffset = (startMinute / 60) * 48;
     
     return (
       <div
         key={task.id}
-        className={`absolute left-1 right-1 rounded-sm px-2 py-1 text-xs cursor-pointer hover:shadow-lg transition-all duration-200 z-10 border-l-4 ${
+        className={`absolute left-1 right-1 rounded-sm px-2 py-1 text-xs cursor-pointer hover:shadow-lg transition-all duration-200 z-10 ${
           isCompleted 
-            ? 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 border-gray-400 dark:border-gray-500'
-            : 'bg-blue-500 text-white border-blue-600'
+            ? 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 line-through'
+            : 'bg-blue-500 text-white'
         }`}
         style={{ 
-          height: '20px',
-          top: `${(taskDueDate.getMinutes() / 60) * 48}px`
+          height: '24px', // 30 minutes = 24px (48px per hour / 2)
+          top: `${topOffset}px`
         }}
         onClick={(e) => {
           e.stopPropagation();
@@ -271,10 +274,10 @@ const WeekView: React.FC = () => {
         }}
         title={task.title}
       >
-        <div className={`flex items-center space-x-1 ${isCompleted ? 'line-through' : ''}`}>
+        <div className="flex items-center space-x-1">
           <CheckSquare className="w-3 h-3" />
           <span className="font-medium truncate">{task.title}</span>
-          <span className="text-xs opacity-90">{timeStr}</span>
+          <span className="text-xs opacity-75">{timeStr}</span>
         </div>
       </div>
     );
@@ -351,6 +354,7 @@ const WeekView: React.FC = () => {
             {/* All-day events */}
             <div className="mt-2 space-y-1 px-1">
               {getAllDayEventsForDay(day).map(event => renderAllDayEvent(event))}
+              {/* Do NOT include tasks in all-day section */}
             </div>
           </div>
         ))}

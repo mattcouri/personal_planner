@@ -79,7 +79,7 @@ const AgendaView: React.FC = () => {
       
       switch (type) {
         case 'event':
-          return 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700/50 text-blue-700 dark:text-blue-300';
+          return 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700/50 text-green-700 dark:text-green-300';
         case 'task':
           return isCompleted 
             ? 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-400'
@@ -98,7 +98,13 @@ const AgendaView: React.FC = () => {
     };
 
     const getTime = () => {
-      if (type === 'task') return null;
+      if (type === 'task') {
+        if ('due' in item && item.due) {
+          const taskDate = new Date(item.due);
+          return format(taskDate, 'HH:mm');
+        }
+        return null;
+      }
       if ('start' in item && item.start.dateTime) {
         const start = format(new Date(item.start.dateTime), 'HH:mm');
         const end = item.end?.dateTime ? format(new Date(item.end.dateTime), 'HH:mm') : '';
@@ -131,7 +137,7 @@ const AgendaView: React.FC = () => {
               )}
             </div>
             
-            {item.description && (
+            {(item.description || item.notes) && (
               <p className="text-xs opacity-75 line-clamp-2 mb-2">{item.description}</p>
             )}
             
@@ -150,8 +156,10 @@ const AgendaView: React.FC = () => {
                 </div>
               )}
               
-              {isCompleted && (
-                <span className="text-green-500 font-medium">✓ Completed</span>
+              {type === 'task' && (
+                <span className={`font-medium ${isCompleted ? 'text-gray-500' : 'text-blue-600'}`}>
+                  {isCompleted ? 'Completed' : 'Task'}
+                </span>
               )}
             </div>
           </div>
