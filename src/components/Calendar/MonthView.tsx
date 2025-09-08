@@ -12,8 +12,8 @@ import {
 } from 'date-fns';
 import { useCalendarStore } from '../../stores/calendarStore';
 import { CalendarEvent, Task, OutOfOfficeEvent } from '../../types/calendar';
-import { googleCalendarApi } from '../../services/googleCalendarApi';
 import EventModal from './EventModal';
+import EventDetailModal from './EventDetailModal';
 
 const MonthView: React.FC = () => {
   const {
@@ -28,6 +28,9 @@ const MonthView: React.FC = () => {
 
   const [showEventModal, setShowEventModal] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ date: Date; hour: number; minute: number } | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [selectedEventType, setSelectedEventType] = useState<'event' | 'task'>('event');
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -74,6 +77,12 @@ const MonthView: React.FC = () => {
     return { events: dayEvents, tasks: dayTasks, outOfOffice: dayOutOfOffice };
   };
 
+  const handleEventClick = (event: any, type: 'event' | 'task') => {
+    setSelectedEvent(event);
+    setSelectedEventType(type);
+    setShowDetailModal(true);
+  };
+
   const handleDayClick = (day: Date, event: React.MouseEvent) => {
     // Only handle click if not clicking on an event
     if ((event.target as HTMLElement).closest('.event-item')) {
@@ -84,7 +93,7 @@ const MonthView: React.FC = () => {
     setShowEventModal(true);
   };
   
-  const renderEventItem = (item: CalendarEvent | Task | OutOfOfficeEvent, type: string) => {
+  const renderEventItem = (item: CalendarEvent | Task | OutOfOfficeEvent, type: string, isAllDay: boolean = false) => {
     const getEventColor = () => {
       switch (type) {
         case 'meeting':
@@ -105,6 +114,8 @@ const MonthView: React.FC = () => {
     };
 
     const getTime = () => {
+      if (type === 'task') return '';
+      if (isAllDay) return '';
       if ('start' in item && item.start.dateTime) {
         return format(new Date(item.start.dateTime), 'HH:mm');
       }
@@ -116,6 +127,10 @@ const MonthView: React.FC = () => {
         key={item.id}
         className={`event-item text-xs p-1 rounded border mb-1 truncate cursor-pointer hover:shadow-sm transition-all duration-200 ${getEventColor()}`}
         title={`${getTitle()} ${getTime()}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleEventClick(item, type === 'task' ? 'task' : 'event');
+        }}
       >
         <div className="flex items-center space-x-1">
           {getTime() && <span className="font-mono text-xs">{getTime()}</span>}
@@ -172,19 +187,73 @@ const MonthView: React.FC = () => {
                 {format(day, 'd')}
               </div>
 
-              {/* Events */}
-              <div className="space-y-1 max-h-20 overflow-y-auto">
-                {/* Show items based on active scheduling type */}
-                {(activeSchedulingType === 'meetings' || activeSchedulingType === 'meetings') && 
-                  dayData.events.slice(0, 3).map(event => renderEventItem(event, 'meeting'))
+              {/* All-day events */}
+              <div className="space-y-1 mb-2">
+                {dayData.events
+                  .filter(event => event.start?.date && !event.start?.dateTime)
+                  .slice(0, 2)
+                  .map(event => renderEventItem(event, 'meeting', true))
+                }
+              </div>
+
+              {/* Timed events and tasks */}
+              <div className="space-y-1 max-h-16 overflow-y-auto">
+                {/* Timed events */}
+                {dayData.events
+                  .filter(event => event.start?.dateTime)
+                  .slice(0, 2)
+                  .map(event => renderEventItem(event, 'meeting'))
                 }
                 
-                {(activeSchedulingType === 'events' || activeSchedulingType === 'meetings') && 
-                  dayData.tasks.slice(0, 2).map(task => renderEventItem(task, 'task'))
-                }
+                {/* Tasks */}
+                {dayData.tasks.slice(0, 2).map(task => renderEventItem(task, 'task'))}
                 
-                {(activeSchedulingType === 'outOfOffice' || activeSchedulingType === 'meetings') && 
-                  dayData.outOfOffice.slice(0, 1).map(event => renderEventItem(event, 'outOfOffice'))
+                {/* Out of office */}
+                {dayData.outOfOffice.slice(0, 1).map(event => renderEventItem(event, 'outOfOffice'))}
+
+                {/* Show overflow indicator */}
+                {(dayData.events.length + dayData.tasks.length + dayData.outOfOffice.length) > 4 && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                    +{(dayData.events.length + dayData.tasks.length + dayData.outOfOffice.length) - 4} more
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      
+      {/* Event Modal */}
+      <EventModal
+        isOpen={showEventModal}
+        onClose={() => {
+          setShowEventModal(false);
+          setSelectedSlot(null);
+        }}
+        selectedDate={selectedSlot?.date}
+        selectedTime={selectedSlot ? { hour: selectedSlot.hour, minute: selectedSlot.minute } : undefined}
+      />
+      
+      {/* Event Detail Modal */}
+      <EventDetailModal
+        isOpen={showDetailModal}
+        onClose={() => {
+          setShowDetailModal(false);
+          setSelectedEvent(null);
+        }}
+        event={selectedEvent}
+        eventType={selectedEventType}
+        onEdit={() => {
+          setShowDetailModal(false);
+          // TODO: Open edit modal
+        }}
+      />
+    </div>
+  );
+};
+
+export default MonthView;
+
                 }
 
                 {/* Show overflow indicator */}

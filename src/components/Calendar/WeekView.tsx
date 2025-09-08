@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { format, startOfWeek, addDays, isSameDay, isToday } from 'date-fns';
 import { useCalendarStore } from '../../stores/calendarStore';
-import { googleCalendarApi } from '../../services/googleCalendarApi';
 import EventModal from './EventModal';
+import EventDetailModal from './EventDetailModal';
 
 const WeekView: React.FC = () => {
   const {
@@ -18,6 +18,9 @@ const WeekView: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showEventModal, setShowEventModal] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ date: Date; hour: number; minute: number } | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [selectedEventType, setSelectedEventType] = useState<'event' | 'task'>('event');
 
   // Update current time every minute
   useEffect(() => {
@@ -107,14 +110,41 @@ const WeekView: React.FC = () => {
     return { events: dayEvents, outOfOffice: dayOutOfOffice };
   };
 
+  const getTasksForDay = (day: Date) => {
+    return tasks.filter(task => {
+      if (task.due) {
+        return isSameDay(new Date(task.due), day);
+      }
+      return false;
+    });
+  };
+
+  const getAllDayEventsForDay = (day: Date) => {
+    return events.filter(event => {
+      if (event.start?.date && !event.start?.dateTime) {
+        return isSameDay(new Date(event.start.date), day);
+      }
+      return false;
+    });
+  };
+
   const handleTimeSlotClick = (day: Date, hour: number, minute: number = 0) => {
     setSelectedSlot({ date: day, hour, minute });
     setShowEventModal(true);
   };
 
+  const handleEventClick = (event: any, type: 'event' | 'task') => {
+    setSelectedEvent(event);
+    setSelectedEventType(type);
+    setShowDetailModal(true);
+  };
+
+  const getUserRSVPStatus = (event: any) => {
+    const userAttendee = event.attendees?.find((a: any) => a.self);
+    return userAttendee?.responseStatus || 'needsAction';
+  };
+
   const renderEvent = (event: any, type: 'event' | 'outOfOffice') => {
-    // console.log('🎨 Rendering event:', event.summary || event.title, 'type:', type);
-    
     // Calculate duration and positioning
     let duration = 60; // Default 1 hour
     let startMinute = 0;
@@ -132,10 +162,23 @@ const WeekView: React.FC = () => {
     const height = Math.max((duration / 60) * 48, 20);
     const topOffset = (startMinute / 60) * 48;
 
-    // Google Calendar colors
-    const colorClass = type === 'outOfOffice'
-      ? 'bg-orange-500 text-white border-l-4 border-orange-600'
-      : 'bg-blue-500 text-white border-l-4 border-blue-600';
+    // Check RSVP status for visual styling
+    const rsvpStatus = getUserRSVPStatus(event);
+    const isConfirmed = rsvpStatus === 'accepted';
+    
+    // Google Calendar colors with RSVP styling
+    let colorClass = '';
+    if (type === 'outOfOffice') {
+      colorClass = 'bg-orange-500 text-white border-l-4 border-orange-600';
+    } else {
+      // Event styling based on RSVP status
+      if (isConfirmed) {
+        colorClass = 'bg-green-500 text-white border-l-4 border-green-600';
+      } else {
+        // Hollow/outline style for unconfirmed events
+        colorClass = 'bg-white dark:bg-gray-800 text-green-600 dark:text-green-400 border-2 border-green-500 border-dashed';
+      }
+    }
 
     const title = event.summary || event.title || 'Untitled Event';
     const location = event.location || '';
@@ -167,7 +210,7 @@ const WeekView: React.FC = () => {
         title={`${title}${location ? ` - ${location}` : ''}`}
         onClick={(e) => {
           e.stopPropagation();
-          console.log('🖱️ Event clicked:', event);
+          handleEventClick(event, 'event');
         }}
       >
         <div className="font-medium truncate">{title}</div>
@@ -179,6 +222,44 @@ const WeekView: React.FC = () => {
         {location && (
           <div className="opacity-75 truncate text-xs">{location}</div>
         )}
+      </div>
+    );
+  };
+
+  const renderTask = (task: any, day: Date) => {
+    const timeStr = task.due ? format(new Date(task.due), 'HH:mm') : '';
+    
+    return (
+      <div
+        key={task.id}
+        className="bg-blue-500 text-white border-l-4 border-blue-600 rounded-sm px-2 py-1 text-xs cursor-pointer hover:shadow-lg transition-all duration-200 mb-1"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleEventClick(task, 'task');
+        }}
+        title={task.title}
+      >
+        <div className="flex items-center space-x-1">
+          <CheckSquare className="w-3 h-3" />
+          <span className="font-medium truncate">{task.title}</span>
+          {timeStr && <span className="text-xs opacity-90">{timeStr}</span>}
+        </div>
+      </div>
+    );
+  };
+
+  const renderAllDayEvent = (event: any) => {
+    return (
+      <div
+        key={event.id}
+        className="bg-green-500 text-white rounded px-2 py-1 text-xs cursor-pointer hover:shadow-md transition-all duration-200 truncate"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleEventClick(event, 'event');
+        }}
+        title={event.summary}
+      >
+        {event.summary}
       </div>
     );
   };
@@ -200,9 +281,6 @@ const WeekView: React.FC = () => {
     const now = new Date();
     return weekDays.findIndex(day => isSameDay(day, now));
   };
-
-  // console.log('🔄 WeekView render - Events in store:', events.length);
-  // console.log('📅 Sample event:', events[0]);
 
   return (
     <div className="flex-1 bg-white dark:bg-gray-800 overflow-hidden">
@@ -230,6 +308,16 @@ const WeekView: React.FC = () => {
                 : 'text-gray-900 dark:text-white'
             }`}>
               {format(day, 'd')}
+            </div>
+            
+            {/* All-day events */}
+            <div className="mt-2 space-y-1 px-1">
+              {getAllDayEventsForDay(day).map(event => renderAllDayEvent(event))}
+            </div>
+            
+            {/* Tasks for the day */}
+            <div className="mt-1 space-y-1 px-1">
+              {getTasksForDay(day).slice(0, 2).map(task => renderTask(task, day))}
             </div>
           </div>
         ))}
@@ -292,6 +380,21 @@ const WeekView: React.FC = () => {
         }}
         selectedDate={selectedSlot?.date}
         selectedTime={selectedSlot ? { hour: selectedSlot.hour, minute: selectedSlot.minute } : undefined}
+      />
+      
+      {/* Event Detail Modal */}
+      <EventDetailModal
+        isOpen={showDetailModal}
+        onClose={() => {
+          setShowDetailModal(false);
+          setSelectedEvent(null);
+        }}
+        event={selectedEvent}
+        eventType={selectedEventType}
+        onEdit={() => {
+          setShowDetailModal(false);
+          // TODO: Open edit modal
+        }}
       />
     </div>
   );
