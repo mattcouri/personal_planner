@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   format, 
   startOfMonth, 
@@ -248,25 +248,6 @@ const MonthView: React.FC = () => {
           // TODO: Open edit modal
         }}
       />
-    </div>
-  );
-};
-
-export default MonthView;
-
-                }
-
-                {/* Show overflow indicator */}
-                {(dayData.events.length + dayData.tasks.length + dayData.outOfOffice.length) > 3 && (
-                  <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                    +{(dayData.events.length + dayData.tasks.length + dayData.outOfOffice.length) - 3} more
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 };
