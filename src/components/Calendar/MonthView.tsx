@@ -12,6 +12,7 @@ import {
 } from 'date-fns';
 import { useCalendarStore } from '../../stores/calendarStore';
 import { CalendarEvent, Task, OutOfOfficeEvent } from '../../types/calendar';
+import { CheckSquare } from 'lucide-react';
 import EventModal from './EventModal';
 import EventDetailModal from './EventDetailModal';
 

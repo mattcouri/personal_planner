@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { format, startOfWeek, addDays, isSameDay, isToday } from 'date-fns';
 import { useCalendarStore } from '../../stores/calendarStore';
+import { CheckSquare } from 'lucide-react';
 import EventModal from './EventModal';
 import EventDetailModal from './EventDetailModal';
 
