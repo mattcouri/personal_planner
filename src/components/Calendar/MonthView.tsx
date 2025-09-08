@@ -125,17 +125,6 @@ const MonthView: React.FC = () => {
           )}
         </div>
       </div>
-      
-      {/* Event Modal */}
-      <EventModal
-        isOpen={showEventModal}
-        onClose={() => {
-          setShowEventModal(false);
-          setSelectedSlot(null);
-        }}
-        selectedDate={selectedSlot?.date}
-        selectedTime={selectedSlot ? { hour: selectedSlot.hour, minute: selectedSlot.minute } : undefined}
-      />
     );
   };
 
