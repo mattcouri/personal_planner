@@ -14,6 +14,15 @@ const WeekView: React.FC = () => {
     currentView
   } = useCalendarStore();
 
+  // ADD THIS DEBUG CODE HERE:
+  console.log('🔍 DEBUG: First few events:', events.slice(0, 3).map(event => ({
+    summary: event.summary,
+    start: event.start,
+    startType: typeof event.start,
+    startDateTime: event.start?.dateTime,
+    startDate: event.start?.date
+  })));
+
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Update current time every minute
