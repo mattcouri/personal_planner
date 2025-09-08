@@ -458,10 +458,8 @@ const EventDetailModal: React.FC<EventDetailModalProps> = ({
           )}
         </div>
       </div>
-    );
-  }
-
-  return null;
+    </div>
+  );
 };
 
 export default EventDetailModal;
