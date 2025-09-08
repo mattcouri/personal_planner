@@ -8,10 +8,8 @@ export default function CompletedTasks() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterProject, setFilterProject] = useState<string>('');
 
-  // Filter completed todos only
-  const completedTodos = state.todos.filter(todo => {
-    if (!todo.completed) return false;
-    
+  // Use completed tasks from state instead of filtering todos
+  const completedTodos = state.completedTasks.filter(todo => {
     const matchesSearch = todo.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          todo.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesProject = !filterProject || todo.projectId === filterProject;
@@ -34,15 +32,22 @@ export default function CompletedTasks() {
     }));
 
   const uncompleteTask = (id: string) => {
-    const todo = state.todos.find(t => t.id === id);
+    const todo = state.completedTasks.find(t => t.id === id);
     if (todo) {
-      dispatch({ type: 'UPDATE_TODO', payload: { ...todo, completed: false } });
+      // Remove from completed tasks and add back to active todos
+      const activeTodo = { ...todo, completed: false };
+      delete activeTodo.completedAt;
+      
+      dispatch({ type: 'ADD_TODO', payload: activeTodo });
+      dispatch({ type: 'DELETE_TODO', payload: id }); // This will remove from completedTasks
     }
   };
 
   const deleteTask = (id: string) => {
     if (confirm('Are you sure you want to permanently delete this task?')) {
-      dispatch({ type: 'DELETE_TODO', payload: id });
+      // Remove from completed tasks permanently
+      const updatedCompletedTasks = state.completedTasks.filter(t => t.id !== id);
+      dispatch({ type: 'LOAD_DATA', payload: { completedTasks: updatedCompletedTasks } });
     }
   };
 

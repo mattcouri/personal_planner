@@ -25,13 +25,9 @@ export default function Health() {
   const [showDimensionModal, setShowDimensionModal] = useState(false);
   const [showManageModal, setShowManageModal] = useState(false);
   const [editingDimension, setEditingDimension] = useState<HealthDimension | null>(null);
-  const [healthDimensions, setHealthDimensions] = useState<HealthDimension[]>([
-    { id: 'spiritual', key: 'spiritual', label: 'Spiritual', description: 'You with your God/Universe', color: '#8B5CF6', position: 1 },
-    { id: 'mental', key: 'mental', label: 'Mental', description: 'You with your mind', color: '#3B82F6', position: 2 },
-    { id: 'social', key: 'social', label: 'Social', description: 'You with other people', color: '#10B981', position: 3 },
-    { id: 'physical', key: 'physical', label: 'Physical', description: 'You with your body', color: '#F59E0B', position: 4 },
-    { id: 'financial', key: 'financial', label: 'Financial', description: 'You with your resources', color: '#EF4444', position: 5 },
-  ].sort((a, b) => a.position - b.position));
+  
+  // Use health dimensions from context
+  const healthDimensions = state.healthDimensions.sort((a, b) => a.position - b.position);
 
   // Calculate date range
   const startDate = new Date(dateRange.start);
@@ -139,7 +135,6 @@ export default function Health() {
     };
 
     if (createGoal) {
-      // Create corresponding goal in Goals & Habits
       const newGoal = {
         id: uuidv4(),
         name: dimension.label,
@@ -150,20 +145,19 @@ export default function Health() {
       };
       
       newDimension.linkedGoalId = newGoal.id;
-      // Note: In a real app, you'd dispatch this to the goals state
-      // For now, we'll just store the linkedGoalId
+      dispatch({ type: 'ADD_GOAL', payload: newGoal });
     }
 
-    setHealthDimensions([...healthDimensions, newDimension]);
+    dispatch({ type: 'ADD_HEALTH_DIMENSION', payload: newDimension });
   };
 
   const updateHealthDimension = (updatedDimension: HealthDimension) => {
-    setHealthDimensions(healthDimensions.map(d => d.id === updatedDimension.id ? updatedDimension : d));
+    dispatch({ type: 'UPDATE_HEALTH_DIMENSION', payload: updatedDimension });
   };
 
   const deleteHealthDimension = (dimensionId: string) => {
     if (confirm('Are you sure you want to delete this health dimension?')) {
-      setHealthDimensions(healthDimensions.filter(d => d.id !== dimensionId));
+      dispatch({ type: 'DELETE_HEALTH_DIMENSION', payload: dimensionId });
     }
   };
 

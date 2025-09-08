@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
+import { useData } from '../contexts/DataContext';
 import { 
   CalendarDays, 
   CheckSquare, 
@@ -19,6 +20,7 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const { isDark, toggleTheme } = useTheme();
+  const { dispatch } = useData();
   const location = useLocation();
 
   const navItems = [
@@ -72,6 +74,13 @@ export default function Layout({ children }: LayoutProps) {
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
+              onDoubleClick={() => {
+                // Update user preferences
+                dispatch({ 
+                  type: 'UPDATE_USER_PREFERENCES', 
+                  payload: { theme: isDark ? 'light' : 'dark' } 
+                });
+              }}
               className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200"
               aria-label="Toggle theme"
             >

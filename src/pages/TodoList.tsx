@@ -53,7 +53,13 @@ export default function TodoList() {
   const toggleTodo = (id: string) => {
     const todo = state.todos.find(t => t.id === id);
     if (todo) {
-      dispatch({ type: 'UPDATE_TODO', payload: { ...todo, completed: !todo.completed } });
+      if (todo.completed) {
+        // Uncomplete the todo
+        dispatch({ type: 'UPDATE_TODO', payload: { ...todo, completed: false } });
+      } else {
+        // Complete the todo - move to completed tasks
+        dispatch({ type: 'COMPLETE_TODO', payload: id });
+      }
     }
   };
 
