@@ -44,10 +44,11 @@ const MonthView: React.FC = () => {
   const getEventsForDay = (day: Date) => {
     const dayEvents = events.filter(event => {
       if (event.start?.date) {
-        // All-day events - parse date without timezone conversion
-        const eventDate = new Date(event.start.date + 'T12:00:00'); // Use noon to avoid timezone issues
-        console.log(`📅 Month view - All-day event "${event.summary}" date: ${event.start.date} -> parsed: ${eventDate} -> same day as ${format(day, 'yyyy-MM-dd')}? ${isSameDay(eventDate, day)}`);
-        return isSameDay(eventDate, day);
+        // All-day events - compare date strings directly (no timezone conversion)
+        const eventDateString = event.start.date; // YYYY-MM-DD format
+        const dayDateString = format(day, 'yyyy-MM-dd');
+        console.log(`📅 Month view - All-day event "${event.summary}": Google date="${eventDateString}" vs Day="${dayDateString}" -> Match? ${eventDateString === dayDateString}`);
+        return eventDateString === dayDateString;
       }
       if (event.start?.dateTime) {
         // Timed events - parse dateTime correctly
