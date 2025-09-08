@@ -126,13 +126,46 @@ const Calendar: React.FC = () => {
       console.log('📅 Events response:', eventsResponse);
       
       // Transform Google Calendar events to our format
-      const transformedEvents = (eventsResponse.items || []).map(event => ({
-        ...event,
-        // Ensure we have the right structure
-        summary: event.summary || event.title || 'Untitled Event',
-        start: event.start || { dateTime: new Date().toISOString() },
-        end: event.end || { dateTime: new Date(Date.now() + 3600000).toISOString() }
-      }));
+const transformedEvents = (eventsResponse.items || []).map(event => {
+  const transformedEvent = {
+    ...event,
+    summary: event.summary || event.title || 'Untitled Event',
+  };
+
+  // Normalize start time
+  if (event.start?.dateTime) {
+    transformedEvent.start = {
+      ...event.start,
+      dateTime: new Date(event.start.dateTime).toISOString()
+    };
+  } else if (event.start?.date) {
+    // Handle all-day events
+    transformedEvent.start = {
+      ...event.start,
+      dateTime: new Date(event.start.date).toISOString()
+    };
+  } else {
+    transformedEvent.start = { dateTime: new Date().toISOString() };
+  }
+
+  // Normalize end time
+  if (event.end?.dateTime) {
+    transformedEvent.end = {
+      ...event.end,
+      dateTime: new Date(event.end.dateTime).toISOString()
+    };
+  } else if (event.end?.date) {
+    // Handle all-day events
+    transformedEvent.end = {
+      ...event.end,
+      dateTime: new Date(event.end.date).toISOString()
+    };
+  } else {
+    transformedEvent.end = { dateTime: new Date(Date.now() + 3600000).toISOString() };
+  }
+
+  return transformedEvent;
+});
       
       console.log('📅 Transformed events:', transformedEvents);
       setEvents(transformedEvents);
