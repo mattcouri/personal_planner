@@ -61,6 +61,7 @@ const MonthView: React.FC = () => {
       }
       if (event.start instanceof Date) {
         return isSameDay(event.start, day);
+      }
         // All-day events - Google uses exclusive end dates
       return false;
     });
