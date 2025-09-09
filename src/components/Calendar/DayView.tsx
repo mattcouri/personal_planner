@@ -52,11 +52,15 @@ const DayView: React.FC = () => {
   const getAllDayEventsForDay = () => {
     return events.filter(event => {
       if (event.start?.date && !event.start?.dateTime) {
-        // All-day events - compare date strings directly (no timezone conversion)
-        const eventDateString = event.start.date; // YYYY-MM-DD format
+        // All-day events - check if this day falls within the event range
+        const eventStartDate = event.start.date; // YYYY-MM-DD format
+        const eventEndDate = event.end?.date || eventStartDate; // Default to start date if no end
         const dayDateString = format(currentDate, 'yyyy-MM-dd');
-        console.log(`📅 Day view - All-day event "${event.summary}": Google date="${eventDateString}" vs Day="${dayDateString}" -> Match? ${eventDateString === dayDateString}`);
-        return eventDateString === dayDateString;
+        
+        // Check if day falls within the event range (inclusive)
+        const isWithinRange = dayDateString >= eventStartDate && dayDateString <= eventEndDate;
+        console.log(`📅 Day view - All-day event "${event.summary}": Start="${eventStartDate}" End="${eventEndDate}" Day="${dayDateString}" -> Within range? ${isWithinRange}`);
+        return isWithinRange;
       }
       return false;
     });

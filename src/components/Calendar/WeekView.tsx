@@ -141,13 +141,16 @@ const WeekView: React.FC = () => {
 
   const getAllDayEventsForDay = (day: Date) => {
     return events.filter(event => {
-      // Only include events that have a date (not dateTime) - these are all-day events
       if (event.start?.date && !event.start?.dateTime) {
-        // For all-day events, compare dates directly without time conversion
-        const eventDateString = event.start.date; // YYYY-MM-DD format
+        // All-day events - check if this day falls within the event range
+        const eventStartDate = event.start.date; // YYYY-MM-DD format
+        const eventEndDate = event.end?.date || eventStartDate; // Default to start date if no end
         const dayDateString = format(day, 'yyyy-MM-dd');
-        console.log(`📅 All-day event "${event.summary}": Google date="${eventDateString}" vs Day="${dayDateString}" -> Match? ${eventDateString === dayDateString}`);
-        return eventDateString === dayDateString;
+        
+        // Check if day falls within the event range (inclusive)
+        const isWithinRange = dayDateString >= eventStartDate && dayDateString <= eventEndDate;
+        console.log(`📅 All-day event "${event.summary}": Start="${eventStartDate}" End="${eventEndDate}" Day="${dayDateString}" -> Within range? ${isWithinRange}`);
+        return isWithinRange;
       }
       return false;
     });

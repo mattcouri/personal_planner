@@ -307,7 +307,7 @@ const EventModal: React.FC<EventModalProps> = ({
     setFormData({
       ...formData,
       allDay: checked,
-      endDate: formData.startDate, // Always same date for all-day events
+      endDate: checked ? formData.startDate : formData.endDate, // Same date for single-day all-day events
       startTime: checked ? '' : '12:00',
       endTime: checked ? '' : '13:00'
     });

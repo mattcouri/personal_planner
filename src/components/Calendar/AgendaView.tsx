@@ -22,11 +22,15 @@ const AgendaView: React.FC = () => {
   const getItemsForDay = (day: Date) => {
     const dayEvents = events.filter(event => {
       if (event.start?.date) {
-        // All-day events - compare date strings directly (no timezone conversion)
-        const eventDateString = event.start.date; // YYYY-MM-DD format
+        // All-day events - check if this day falls within the event range
+        const eventStartDate = event.start.date; // YYYY-MM-DD format
+        const eventEndDate = event.end?.date || eventStartDate; // Default to start date if no end
         const dayDateString = format(day, 'yyyy-MM-dd');
-        console.log(`📅 All-day event "${event.summary}": Google date="${eventDateString}" vs Day="${dayDateString}" -> Match? ${eventDateString === dayDateString}`);
-        return eventDateString === dayDateString;
+        
+        // Check if day falls within the event range (inclusive)
+        const isWithinRange = dayDateString >= eventStartDate && dayDateString <= eventEndDate;
+        console.log(`📅 Agenda view - All-day event "${event.summary}": Start="${eventStartDate}" End="${eventEndDate}" Day="${dayDateString}" -> Within range? ${isWithinRange}`);
+        return isWithinRange;
       }
       if (event.start?.dateTime) {
         // Timed events - parse dateTime correctly
