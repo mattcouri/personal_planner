@@ -44,13 +44,13 @@ const MonthView: React.FC = () => {
   const getEventsForDay = (day: Date) => {
     const dayEvents = events.filter(event => {
       if (event.start?.date) {
-        // All-day events - check if this day falls within the event range
+        // All-day events - Google uses exclusive end dates (end date is day AFTER event ends)
         const eventStartDate = event.start.date; // YYYY-MM-DD format
-        const eventEndDate = event.end?.date || eventStartDate; // Default to start date if no end
+        const eventEndDate = event.end?.date || eventStartDate;
         const dayDateString = format(day, 'yyyy-MM-dd');
         
-        // Check if day falls within the event range (inclusive)
-        const isWithinRange = dayDateString >= eventStartDate && dayDateString <= eventEndDate;
+        // Check if day falls within the event range (start inclusive, end exclusive)
+        const isWithinRange = dayDateString >= eventStartDate && dayDateString < eventEndDate;
         console.log(`📅 Month view - All-day event "${event.summary}": Start="${eventStartDate}" End="${eventEndDate}" Day="${dayDateString}" -> Within range? ${isWithinRange}`);
         return isWithinRange;
       }
@@ -61,7 +61,7 @@ const MonthView: React.FC = () => {
       }
       if (event.start instanceof Date) {
         return isSameDay(event.start, day);
-      }
+        // All-day events - Google uses exclusive end dates
       return false;
     });
 

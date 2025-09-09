@@ -148,15 +148,21 @@ const EventDetailModal: React.FC<EventDetailModalProps> = ({
       const startDate = event.start.date;
       const endDate = event.end?.date;
       
-      if (startDate === endDate) {
+      // Google uses exclusive end dates for all-day events
+      // Single day: start="2025-10-07", end="2025-10-08" 
+      // Multi-day: start="2025-10-05", end="2025-10-08" (spans Oct 5, 6, 7)
+      const startDateObj = new Date(startDate + 'T12:00:00');
+      const endDateObj = new Date(endDate + 'T12:00:00');
+      const daysDiff = Math.round((endDateObj.getTime() - startDateObj.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysDiff <= 1) {
         // Single day all-day event
-        const start = new Date(startDate + 'T12:00:00');
-        return format(start, 'EEEE, MMMM d');
+        return format(startDateObj, 'EEEE, MMMM d');
       } else {
         // Multi-day all-day event
-        const start = new Date(startDate + 'T12:00:00');
-        const end = new Date(endDate + 'T12:00:00');
-        return `${format(start, 'EEEE, MMMM d')} – ${format(end, 'EEEE, MMMM d')}`;
+        // Show actual last day (end date - 1 day since Google uses exclusive end)
+        const actualEndDate = new Date(endDateObj.getTime() - 24 * 60 * 60 * 1000);
+        return `${format(startDateObj, 'EEEE, MMMM d')} – ${format(actualEndDate, 'EEEE, MMMM d')}`;
       }
     }
 

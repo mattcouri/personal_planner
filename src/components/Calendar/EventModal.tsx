@@ -225,11 +225,16 @@ const EventModal: React.FC<EventModalProps> = ({
 
         if (formData.allDay) {
           // All-day event: same start and end date, no time
+          // For Google Calendar, end date should be the day AFTER the event ends (exclusive)
+          const startDate = new Date(formData.startDate);
+          const endDate = new Date(formData.endDate);
+          const actualEndDate = new Date(endDate.getTime() + 24 * 60 * 60 * 1000); // Add 1 day for Google's exclusive end
+          
           eventData.start = { 
             date: formData.startDate
           };
           eventData.end = { 
-            date: formData.startDate // Same date for all-day events
+            date: format(actualEndDate, 'yyyy-MM-dd') // Next day for Google's exclusive end
           };
           console.log('🌅 Creating all-day event:', {
             start: eventData.start,
