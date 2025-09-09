@@ -143,7 +143,6 @@ const EventDetailModal: React.FC<EventDetailModalProps> = ({
       return 'No due date';
     }
 
-    if (event.start?.date && event.end?.date) {
     if (event.start?.date) {
       // All day event - check if multi-day
       const startDate = event.start.date;
