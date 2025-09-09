@@ -144,13 +144,10 @@ const EventDetailModal: React.FC<EventDetailModalProps> = ({
     }
 
     if (event.start?.date && event.end?.date) {
-      // All day event
-      const start = new Date(event.start.date);
-      const end = new Date(event.end.date);
-      if (start.toDateString() === end.toDateString()) {
-        return format(start, 'EEEE, MMMM d');
-      }
-      return `${format(start, 'MMM d')} - ${format(end, 'MMM d')}`;
+      // All day event - Google Calendar always shows single day for all-day events
+      // Even if end date is different, display only the start date
+      const start = new Date(event.start.date + 'T12:00:00');
+      return format(start, 'EEEE, MMMM d');
     }
 
     if (event.start?.dateTime && event.end?.dateTime) {
