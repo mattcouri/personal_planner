@@ -123,12 +123,15 @@ const EventDetailModal: React.FC<EventDetailModalProps> = ({
   };
 
   const handleEdit = () => {
-    onClose(); // Close detail modal first
-    setShowEditModal(true);
+    setShowDetailModal(false);
+    setTimeout(() => {
+      setShowEditModal(true);
+    }, 100); // Small delay to ensure proper modal transition
   };
 
   const handleCloseEditModal = () => {
     setShowEditModal(false);
+    // Don't automatically reopen detail modal
   };
 
   const copyToClipboard = (text: string) => {

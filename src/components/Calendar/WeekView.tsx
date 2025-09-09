@@ -132,8 +132,10 @@ const WeekView: React.FC = () => {
         const taskDueDate = new Date(task.due);
         const isSameDay = taskDueDate.toDateString() === day.toDateString();
         const isSameHour = taskDueDate.getHours() === hour;
-        console.log(`🔍 Task "${task.title}" due: ${task.due} -> parsed: ${taskDueDate} -> same day? ${isSameDay} -> same hour (${hour})? ${isSameHour}`);
-        return isSameDay && isSameHour;
+        // Only show tasks that have a specific time (not midnight/all-day)
+        const hasSpecificTime = taskDueDate.getHours() !== 0 || taskDueDate.getMinutes() !== 0;
+        console.log(`🔍 Task "${task.title}" due: ${task.due} -> parsed: ${taskDueDate} -> same day? ${isSameDay} -> same hour (${hour})? ${isSameHour} -> has specific time? ${hasSpecificTime}`);
+        return isSameDay && isSameHour && hasSpecificTime;
       }
       return false;
     });

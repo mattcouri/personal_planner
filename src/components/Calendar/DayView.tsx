@@ -80,7 +80,8 @@ const DayView: React.FC = () => {
     return tasks.filter(task => {
       if (task.due) {
         const taskDueDate = new Date(task.due);
-        return isSameDay(taskDueDate, currentDate) && taskDueDate.getHours() === hour;
+        const hasSpecificTime = taskDueDate.getHours() !== 0 || taskDueDate.getMinutes() !== 0;
+        return isSameDay(taskDueDate, currentDate) && taskDueDate.getHours() === hour && hasSpecificTime;
       }
       return false;
     });

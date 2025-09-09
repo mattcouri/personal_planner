@@ -175,7 +175,14 @@ const EventModal: React.FC<EventModalProps> = ({
     try {
       if (activeTab === 'task') {
         // Create Google Task with proper due date/time
+        // For tasks, we need to create them with a specific due time, not all-day
         const dueDateTime = new Date(`${formData.startDate}T${formData.startTime}:00`);
+        
+        console.log('🔍 Creating task with due time:', {
+          startDate: formData.startDate,
+          startTime: formData.startTime,
+          dueDateTime: dueDateTime.toISOString()
+        });
         
         const taskData = {
           title: formData.title,
@@ -227,7 +234,7 @@ const EventModal: React.FC<EventModalProps> = ({
           // All-day event: same start and end date, no time
           // For Google Calendar, end date should be the day AFTER the event ends (exclusive)
           const startDate = new Date(formData.startDate);
-          const endDate = new Date(formData.endDate);
+          const endDate = formData.endDate ? new Date(formData.endDate) : startDate;
           const actualEndDate = new Date(endDate.getTime() + 24 * 60 * 60 * 1000); // Add 1 day for Google's exclusive end
           
           eventData.start = { 
